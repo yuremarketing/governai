@@ -300,7 +300,7 @@ Garantir que o GovernAI exiba claramente o contexto de decisão das tarefas e fu
 
 ### TASK-004 — Criar exemplo prático de uso
 
-**Status:** [ ]
+**Status:** [x]
 **Descrição:**
 Criar um cenário simulado mostrando o uso do GovernAI em um projeto real.
 
