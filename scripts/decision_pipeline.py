@@ -55,6 +55,23 @@ def update_local_task_status(task_id, status_tag):
         
     return False
 
+def print_decision_context(task_id, title):
+    print(cli_colors.blue("-" * 50))
+    print(cli_colors.bold(cli_colors.blue("GovernAI — Decisão de Execução de Task")))
+    print(cli_colors.blue("-" * 50))
+    print(f"Task: {cli_colors.bold(task_id)}")
+    print(f"Título: {cli_colors.bold(title)}")
+    print()
+    print("Ação necessária:")
+    print("Deseja iniciar a execução desta tarefa agora?")
+    print()
+    print("Opções:")
+    print(f"1) {cli_colors.green('Executar tarefa')} (marcar como [/] e iniciar métricas)")
+    print(f"2) {cli_colors.yellow('Apenas registrar no backlog')} (manter como [ ])")
+    print()
+    print("(Aguardando decisão do usuário...)")
+    print(cli_colors.blue("-" * 50))
+
 def ensure_task_decision(task_id):
     # Load existing metrics database to check if already registered
     metrics_file = os.path.join(BASE_DIR, "logs", "metrics.json")
@@ -75,43 +92,46 @@ def ensure_task_decision(task_id):
     
     if not rules.get("always_prompt_on_new_task", True):
         # If prompt is disabled, return default "pending" as fail-safe
+        print(f"[DECISION] {task_id} → pending (configuração always_prompt_on_new_task desativada)")
         return "pending"
         
     task_title = find_task_title(task_id)
     
+    # ALWAYS print the decision context to stdout before any prompt or logic
+    print_decision_context(task_id, task_title)
+    
     # Check if terminal is interactive (TTY)
     if not sys.stdin.isatty():
-        print(cli_colors.yellow(f"[AVISO] Terminal não interativo detectado. Auto-selecionando Opção 2 (Apenas registrar no backlog) para a tarefa {task_id}."))
+        print(cli_colors.yellow(f"[INFO] Ambiente não-interativo detectado. Auto-selecionando Opção 2 (Apenas registrar no backlog) para a tarefa {task_id}."))
+        # Explicit decision log in requested format
+        print(f"[DECISION] {task_id} → pending (modo não-interativo)")
         update_local_task_status(task_id, "pending")
         return "pending"
         
-    # Interactive prompt with styling
-    print("=" * 65)
-    print(cli_colors.bold(cli_colors.blue("GovernAI — Camada de Decisão de Governança")))
-    print("=" * 65)
-    print(f"Nova tarefa detectada: {cli_colors.bold(cli_colors.cyan(task_id))}")
-    print(f"Título: {cli_colors.bold(task_title)}")
-    print()
-    print("Como deseja prosseguir com esta tarefa?")
-    print(f"  {cli_colors.green('1) Executar tarefa')} (marcar como [/] em TASKS.md e iniciar a execução)")
-    print(f"  {cli_colors.yellow('2) Apenas registrar no backlog/kanban')} (marcar como [ ] em TASKS.md)")
-    print()
-    
+    # Interactive prompt with validation
     choice = ""
     while choice not in ["1", "2"]:
         try:
             choice = input(cli_colors.bold("Selecione uma opção (1-2): ")).strip()
+            if choice not in ["1", "2"]:
+                print(cli_colors.red("[ERRO] Opção inválida! Escolha apenas 1 ou 2."))
         except (KeyboardInterrupt, EOFError):
             print()
             print(cli_colors.yellow("[AVISO] Entrada interrompida. Adotando Opção 2 (Apenas registrar no backlog)."))
-            choice = "2"
-            break
+            # Explicit decision log in requested format
+            print(f"[DECISION] {task_id} → pending (entrada interrompida)")
+            update_local_task_status(task_id, "pending")
+            return "pending"
             
     if choice == "1":
+        # Explicit decision log in requested format
+        print(f"[DECISION] {task_id} → in_progress (input do usuário)")
         update_local_task_status(task_id, "in_progress")
         print(cli_colors.green(f"[SUCESSO] Status da tarefa {task_id} atualizado para EXECUÇÃO em TASKS.md."))
         return "in_progress"
     else:
+        # Explicit decision log in requested format
+        print(f"[DECISION] {task_id} → pending (input do usuário)")
         update_local_task_status(task_id, "pending")
         print(cli_colors.yellow(f"[INFO] Tarefa {task_id} registrada apenas no BACKLOG/TODO."))
         return "pending"

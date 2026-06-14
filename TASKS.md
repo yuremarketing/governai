@@ -270,6 +270,29 @@ Melhorar a experiência do usuário (UX) na CLI `governai` adicionando cores (us
 
 ---
 
+### TASK-GOV-006 — Ajustar decision pipeline para ambientes não-interativos (executor/agent)
+
+**Status:** [x]
+**Descrição:**
+Garantir que o GovernAI exiba claramente o contexto de decisão das tarefas e funcione corretamente em ambientes onde a entrada interativa (stdin) não é visível ou é controlada por um executor/agent.
+
+**Critérios de aceite:**
+- O sistema deve SEMPRE imprimir no stdout, ANTES de qualquer solicitação de decisão:
+  - ID da task (TASK-XXX)
+  - título da task
+  - descrição do que está sendo decidido
+  - opções disponíveis (executar ou backlog)
+- O output do contexto deve ser claro e legível com separadores e cabeçalho explícito.
+- Em ambientes NÃO interativos (detectar via `sys.stdin.isatty()` ou equivalente), NÃO utilizar input() e retornar automaticamente a opção segura "pending" (backlog).
+- Em ambientes interativos, usar input() apenas após exibir claramente o contexto, validar a entrada (aceitar somente 1 ou 2), e repetir em caso de erro.
+- Nunca solicitar input invisível ou sem contexto.
+- Registrar explicitamente no stdout a decisão tomada no formato:
+  `[DECISION] TASK-XXX → <status> (<motivo>)`
+  (onde motivo pode ser "input do usuário" ou "ambiente não-interativo").
+
+---
+
+
 
 
 
@@ -339,6 +362,18 @@ Definir arquitetura de uma interface visual para gestão do GovernAI.
 - Ideia de telas
 - Fluxo de navegação
 
+
+### TASK-GOV-007 — Implementar fail-safe de governança no Webhook Receiver
+
+**Status:** [ ]
+**Descrição:**
+Garantir que o script `webhook_receiver.py` falhe de forma segura na inicialização caso as regras de governança em `governai.config.json` não possam ser carregadas.
+
+**Critérios de aceite:**
+- Importar e invocar `load_governance_rules()` no `main()` do `webhook_receiver.py` antes de iniciar o servidor HTTP.
+- Garantir que erros de configuração abortem a inicialização com exit code 1.
+
+---
 
 ## ✅ Concluídas
 
