@@ -86,7 +86,7 @@ Estender o script de sincronização para atualizar também o corpo (body) dos c
 
 ### TASK-012 — Garantir idempotência no metrics.py
 
-**Status:** [ ]
+**Status:** [x]
 **Descrição:**
 Ajustar o script `scripts/metrics.py` para garantir idempotência. Deve evitar a duplicação de eventos `start` e `complete` (por exemplo, ignorar chamadas repetidas de `start` se a tarefa já estiver iniciada, e `complete` se já estiver concluída) e proteger os contadores de inconsistências.
 
