@@ -432,6 +432,38 @@ Tornar a comunicação do GovernAI mais amigável, clara e compreensível para u
 
 ---
 
+### TASK-GOV-013 — Instalação padrão do GovernAI
+
+**Status:** [ ]
+
+**Objetivo:**
+Permitir que qualquer pessoa instale o GovernAI no seu computador de forma automática e extremamente simples, usando um único comando.
+
+**Descrição:**
+Criaremos um script de instalação padrão (`install_governai.sh`) que automatiza toda a configuração inicial do framework (instalação de dependências, setup de atalhos e inicialização segura das chaves de configuração). Isso prepara o caminho para futuras instalações via pacotes Python (ex: `pip install governai`).
+
+**Critérios de Aceite:**
+- [ ] Criar o script executável `install_governai.sh` na raiz do projeto.
+- [ ] O script de instalação deve verificar dependências básicas (como Python 3 e Git) e alertar o usuário caso não estejam disponíveis.
+- [ ] O script deve automatizar a configuração do executável `governai` no path do usuário ou criar um alias amigável para facilitar o uso global.
+- [ ] Configurar de forma fail-safe o arquivo inicial `governai.config.json` e o arquivo `.env` (exemplo).
+- [ ] Apresentar mensagens claras, amigáveis e em português durante todo o progresso da instalação.
+
+**Passos de Execução (Checklist):**
+- [ ] Iniciar a tarefa localmente (mudar status para `[/]` em TASKS.md)
+- [ ] Criar o plano técnico na pasta de trabalho e aguardar aceitação do usuário
+- [ ] Escrever o código do script de instalação `install_governai.sh`
+- [ ] Validar a instalação limpa em um ambiente de teste simulado
+- [ ] Marcar a tarefa como concluída (`[x]`) em TASKS.md
+- [ ] Sincronizar o andamento com o GitHub Projects
+- [ ] Registrar histórico de entrega em walkthrough.md
+- [ ] Finalizar o commit e enviar o código para o servidor remoto
+
+**Resultado Esperado:**
+O usuário não precisará mais configurar pastas, variáveis de ambiente ou dependências manualmente para usar o GovernAI. Ele simplesmente executará o instalador padrão e o sistema estará pronto para atuar e proteger o projeto imediatamente.
+
+---
+
 ## ✅ Concluídas
 
 _(nenhuma ainda)_
