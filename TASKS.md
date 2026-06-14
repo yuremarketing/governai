@@ -189,6 +189,90 @@ Aplicar hardening e aumentar a robustez do sistema de notificações ativas (not
 
 ---
 
+### TASK-GOV-001 — Implementar pipeline de decisão obrigatório no GovernAI
+
+**Status:** [x]
+**Descrição:**
+Garantir que o GovernAI controle o fluxo de decisão do usuário ao interagir com tasks, exigindo confirmação explícita antes de qualquer execução.
+
+**Critérios de aceite:**
+- Sempre que uma task for criada ou detectada, o sistema deve apresentar opções ao usuário:
+  1) Executar tarefa
+  2) Apenas registrar no backlog/kanban
+- O sistema NUNCA deve executar automaticamente sem escolha explícita do usuário.
+- A lógica deve funcionar independentemente do agente (Copilot, Gemini, etc.).
+- O fluxo deve ser automático e não depender de instruções no prompt.
+- O comportamento deve ser padronizado para todo o projeto.
+
+---
+
+### TASK-GOV-002 — Persistir regras de governança automaticamente no projeto
+
+**Status:** [x]
+**Descrição:**
+Garantir que as regras de comportamento do GovernAI sejam persistidas dentro do projeto e aplicadas automaticamente em qualquer nova interação, sem depender de prompts manuais do usuário.
+
+**Critérios de aceite:**
+- Criar um arquivo de governança no projeto (ex: GOVERNANCE.md ou governai.config.json)
+- Armazenar regras padrão como:
+  - sempre perguntar antes de executar tasks
+  - nunca executar automaticamente sem confirmação
+  - oferecer opções (executar ou apenas registrar)
+- Garantir que essas regras sejam carregadas automaticamente pelos scripts (sync_tasks.py, metrics.py, etc.)
+- As regras devem ser aplicadas independentemente do agente (Copilot, Gemini, etc.)
+- O sistema deve falhar de forma segura (não executar) caso as regras não possam ser carregadas
+
+---
+
+### TASK-GOV-003 — Transformar GovernAI em CLI executável (governai run)
+
+**Status:** [x]
+**Descrição:**
+Transformar o GovernAI em uma interface de linha de comando (CLI) padronizada, permitindo executar, gerenciar e controlar o sistema de governança sem depender diretamente de scripts individuais.
+
+**Critérios de aceite:**
+- Criar comando principal:
+  - `governai run` → executa o sincronizador + decision pipeline
+- Criar subcomandos:
+  - `governai start TASK-XXX`
+  - `governai block TASK-XXX`
+  - `governai complete TASK-XXX`
+  - `governai sync`
+  - `governai report`
+- A CLI deve:
+  - carregar automaticamente governai.config.json
+  - respeitar o decision pipeline (TASK-GOV-001)
+  - usar as métricas (metrics.py)
+- Exibir mensagens amigáveis no terminal (UX melhorada)
+- Funcionar localmente sem dependências externas
+
+Requisitos técnicos:
+- Criar arquivo `governai.py` ou `cli.py` na raiz ou em scripts/
+- Usar argparse (ou similar) para parsing de comandos
+- Encapsular chamadas existentes (sync_tasks, metrics, notifier)
+- Garantir compatibilidade com ambientes não interativos
+- Opcional: tornar executável (chmod +x governai)
+
+---
+
+### TASK-GOV-004 — Melhorar experiência CLI (cores, ajuda, mensagens)
+
+**Status:** [x]
+**Descrição:**
+Melhorar a experiência do usuário (UX) na CLI `governai` adicionando cores (usando códigos ANSI para compatibilidade simples), formatação aprimorada nas mensagens de ajuda e status de execução detalhados.
+
+**Critérios de aceite:**
+- Adicionar suporte a cores ANSI no console (verde para sucesso, amarelo para avisos, vermelho para erros/bloqueios, azul para informações).
+- A ajuda de comando (`--help`) deve ser limpa, formatada com cores e conter explicações concisas de cada subcomando.
+- O prompt de decisão obrigatório (TASK-GOV-001) deve ser visualmente destacado utilizando cores.
+- Mensagens de erro de governança e falha segura devem ser impressas em vermelho (`[ERRO]`).
+- O suporte a cores deve respeitar `sys.stdout.isatty()` ou a variável de ambiente `NO_COLOR` para evitar sujeira nos logs em CI/CD.
+
+---
+
+
+
+
 ## 🟡 Prioridade Média
 
 ### TASK-004 — Criar exemplo prático de uso
@@ -255,7 +339,6 @@ Definir arquitetura de uma interface visual para gestão do GovernAI.
 - Ideia de telas
 - Fluxo de navegação
 
----
 
 ## ✅ Concluídas
 

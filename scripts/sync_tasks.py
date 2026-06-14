@@ -12,6 +12,8 @@ ENV_FILE = os.path.join(BASE_DIR, ".env")
 
 sys.path.append(SCRIPT_DIR)
 from metrics import start_task, complete_task, load_metrics, metrics_transaction, add_pending_task_raw
+import cli_colors
+from governance_loader import load_governance_rules
 
 def load_env():
     env = {}
@@ -31,10 +33,11 @@ PROJECT_NUMBER = env.get("PROJECT_NUMBER") or os.environ.get("PROJECT_NUMBER")
 GITHUB_USER = env.get("GITHUB_USER") or os.environ.get("GITHUB_USER")
 
 if not GITHUB_TOKEN or not PROJECT_NUMBER or not GITHUB_USER:
-    print("[ERRO] Variáveis GITHUB_TOKEN, PROJECT_NUMBER ou GITHUB_USER não encontradas no .env ou no ambiente.")
+    print(cli_colors.red("[ERRO] Variáveis GITHUB_TOKEN, PROJECT_NUMBER ou GITHUB_USER não encontradas no .env ou no ambiente."), file=sys.stderr)
     sys.exit(1)
 
 PROJECT_NUMBER = int(PROJECT_NUMBER)
+
 
 def normalize_text(text):
     if not text:
@@ -92,7 +95,7 @@ def parse_tasks():
     sections = content.split("---")
     tasks = []
     
-    header_re = re.compile(r"###\s+(TASK-\d+)\s*[-—]\s*(.+)")
+    header_re = re.compile(r"###\s+(TASK-[A-Z0-9_-]+)\s*[-—]\s*(.+)")
     
     for section in sections:
         section = section.strip()
@@ -318,15 +321,18 @@ def update_item_status(project_id, item_id, field_id, option_id):
     })
 
 def main():
-    print("Sincronizando tarefas com o GitHub Projects (com atualização de corpo)...")
+    # Load governance rules first (fail-safe check)
+    load_governance_rules()
+    
+    print(cli_colors.cyan("Sincronizando tarefas com o GitHub Projects (com atualização de corpo)..."))
     tasks = parse_tasks()
-    print(f"Lidas {len(tasks)} tarefas de TASKS.md.")
+    print(cli_colors.blue(f"Lidas {len(tasks)} tarefas de TASKS.md."))
     
-    print("Buscando metadados do projeto...")
+    print(cli_colors.blue("Buscando metadados do projeto..."))
     project_id, status_field_id, status_options = get_project_metadata()
-    print("Opções de Status detectadas:", list(status_options.keys()))
+    print(cli_colors.blue(f"Opções de Status detectadas: {list(status_options.keys())}"))
     
-    print("Buscando itens atuais do board...")
+    print(cli_colors.blue("Buscando itens atuais do board..."))
     existing_items = get_current_items(project_id)
     
     for t in tasks:
@@ -337,7 +343,6 @@ def main():
         
         # Sincronização e consistência atômica com o metrics.json
         task_id = t["id"]
-        target_metrics_status = "done" if is_done else ("in_progress" if is_in_progress else "pending")
         
         try:
             m_data = load_metrics()
@@ -346,19 +351,47 @@ def main():
             current_metrics_status = None
             
         if current_metrics_status is None:
-            print(f"Inicializando '{task_id}' como pending no metrics.json...")
+            # INTERCEPT new/detected tasks for decision
+            import decision_pipeline
+            decision = decision_pipeline.ensure_task_decision(task_id)
+            if decision == "in_progress":
+                is_in_progress = True
+                is_done = False
+                t["is_in_progress"] = True
+                t["is_done"] = False
+                target_metrics_status = "in_progress"
+            else:
+                is_in_progress = False
+                is_done = False
+                t["is_in_progress"] = False
+                t["is_done"] = False
+                target_metrics_status = "pending"
+                
+            status_tag = "in_progress" if is_in_progress else "todo"
+            # Replace sync tag in body
+            body = re.sub(r"<!--\s*governai-sync:\s*([\w_]+)\s*-->", f"<!-- governai-sync: {status_tag} -->", body)
+            t["body"] = body
+            
+            print(cli_colors.green(f"Inicializando '{task_id}' como {target_metrics_status} no metrics.json..."))
             with metrics_transaction() as m:
                 add_pending_task_raw(m, task_id)
-            current_metrics_status = "pending"
+                m[task_id]["status"] = target_metrics_status
+                if target_metrics_status == "in_progress":
+                    from datetime import datetime, timezone
+                    m[task_id]["start_time"] = datetime.now(timezone.utc).isoformat()
+                    m[task_id]["llm_calls"] = 1
+            current_metrics_status = target_metrics_status
+        else:
+            target_metrics_status = "done" if is_done else ("in_progress" if is_in_progress else "pending")
             
         if current_metrics_status != target_metrics_status:
             # Exceção de Bloqueio (Regra da TASK-015):
             # Se target_metrics_status for 'pending' mas no metrics for 'blocked', preservamos o 'blocked' e avisamos.
             if target_metrics_status == "pending" and current_metrics_status == "blocked":
-                print(f"\n[AVISO DE DIVERGÊNCIA] A tarefa {task_id} está marcada como 'blocked' no metrics.json, "
-                      f"mas o TASKS.md indica backlog '[ ]' (pending). Preservando o estado 'blocked' para investigação manual.\n")
+                print(cli_colors.yellow(f"\n[AVISO DE DIVERGÊNCIA] A tarefa {task_id} está marcada como 'blocked' no metrics.json, "
+                      f"mas o TASKS.md indica backlog '[ ]' (pending). Preservando o estado 'blocked' para investigação manual.\n"))
             else:
-                print(f"Consistência: Sincronizando status de '{task_id}' no metrics.json: {current_metrics_status} -> {target_metrics_status}")
+                print(cli_colors.blue(f"Consistência: Sincronizando status de '{task_id}' no metrics.json: {current_metrics_status} -> {target_metrics_status}"))
                 if target_metrics_status == "in_progress":
                     start_task(task_id)
                 elif target_metrics_status == "done":
@@ -394,18 +427,18 @@ def main():
             
             # Check if the body needs update
             if draft_issue_id and normalize_text(current_body) != normalize_text(body):
-                print(f"Atualizando corpo de '{title}'...")
+                print(cli_colors.blue(f"Atualizando corpo de '{title}'..."))
                 update_draft_issue(draft_issue_id, title, body)
             
             if current_status != target_status_name:
-                print(f"Atualizando status de '{title}': {current_status} -> {target_status_name}")
+                print(cli_colors.cyan(f"Atualizando status de '{title}': {current_status} -> {target_status_name}"))
                 update_item_status(project_id, item_id, status_field_id, option_id)
         else:
-            print(f"Criando nova task '{title}' no status {target_status_name}...")
+            print(cli_colors.green(f"Criando nova task '{title}' no status {target_status_name}..."))
             item_id, draft_issue_id = add_draft_issue(project_id, title, body)
             update_item_status(project_id, item_id, status_field_id, option_id)
             
-    print("Sincronização concluída com sucesso!")
+    print(cli_colors.green("Sincronização concluída com sucesso!"))
 
 if __name__ == "__main__":
     main()

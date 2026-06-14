@@ -1,0 +1,10 @@
+{
+  "governance": {
+    "always_prompt_on_new_task": true,
+    "never_auto_execute": true,
+    "prompt_options": [
+      "Executar tarefa",
+      "Apenas registrar no backlog/kanban"
+    ]
+  }
+}

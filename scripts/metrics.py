@@ -6,10 +6,17 @@ import contextlib
 from datetime import datetime, timezone
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(SCRIPT_DIR)
+import cli_colors
+from governance_loader import load_governance_rules
+# Fail-safe check
+load_governance_rules()
+
 BASE_DIR = os.path.dirname(SCRIPT_DIR)
 METRICS_FILE = os.path.join(BASE_DIR, "logs", "metrics.json")
 LOCK_FILE = METRICS_FILE + ".lock"
 LOCK_TIMEOUT = 5.0  # segundos
+
 
 def load_env():
     env_file = os.path.join(BASE_DIR, ".env")
@@ -181,14 +188,14 @@ def update_activity_and_alerts(task_id, task_data, now, old_status, old_alerts_k
         should_print = True
         
     if old_alerts_keys and not new_alerts_keys:
-        print(f"✅ [MÉTRICAS] Alertas resolvidos para a tarefa {task_id}. A tarefa está em conformidade.")
+        print(cli_colors.green(f"✅ [MÉTRICAS] Alertas resolvidos para a tarefa {task_id}. A tarefa está em conformidade."))
         task_data["active_alerts"] = []
         return
         
     if should_print:
-        print(f"⚠️ [ALERTA DE GOVERNANÇA] tarefa {task_id} ({new_status}):")
+        print(cli_colors.yellow(f"⚠️ [ALERTA DE GOVERNANÇA] tarefa {task_id} ({new_status}):"))
         for k in sorted(new_alerts_keys):
-            print(f"   - {new_alerts[k]}")
+            print(cli_colors.red(f"   - {new_alerts[k]}"))
             
     task_data["active_alerts"] = sorted(list(new_alerts_keys))
     
@@ -210,17 +217,37 @@ def add_pending_task_raw(metrics, task_id):
 
 def add_pending_task(task_id):
     now = datetime.now(timezone.utc)
+    
+    # Check if task is new/detected before acquiring lock to avoid holding it during input prompts
+    m_data = load_metrics()
+    if task_id not in m_data:
+        import decision_pipeline
+        decision_pipeline.ensure_task_decision(task_id)
+        
     with metrics_transaction() as metrics:
-        if task_id in metrics:
-            print(f"[MÉTRICAS] Aviso: Tarefa {task_id} já registrada com status '{metrics[task_id].get('status')}'.")
+        if task_id in metrics and metrics[task_id].get("status") != "pending":
+            print(cli_colors.yellow(f"[MÉTRICAS] Aviso: Tarefa {task_id} já registrada com status '{metrics[task_id].get('status')}'. (Ignorando registro)"))
             return
         add_pending_task_raw(metrics, task_id)
         metrics[task_id]["last_activity_time"] = now.isoformat()
-        print(f"[MÉTRICAS] Tarefa {task_id} registrada como pendente.")
+        print(cli_colors.blue(f"[MÉTRICAS] Tarefa {task_id} registrada como pendente."))
 
 def start_task(task_id):
     now = datetime.now(timezone.utc)
     now_str = now.isoformat()
+    
+    m_data = load_metrics()
+    if task_id not in m_data:
+        import decision_pipeline
+        decision = decision_pipeline.ensure_task_decision(task_id)
+        # If they chose option 2 (backlog / pending), we do not force start it
+        if decision == "pending":
+            with metrics_transaction() as metrics:
+                add_pending_task_raw(metrics, task_id)
+                metrics[task_id]["status"] = "pending"
+                metrics[task_id]["last_activity_time"] = now_str
+            return
+            
     with metrics_transaction() as metrics:
         add_pending_task_raw(metrics, task_id)
         
@@ -230,10 +257,10 @@ def start_task(task_id):
         
         status = task_data.get("status")
         if status in ["in_progress"]:
-            print(f"[MÉTRICAS] Aviso: Tarefa {task_id} já está com status 'in_progress'. Ignorando inicialização.")
+            print(cli_colors.yellow(f"[MÉTRICAS] Aviso: Tarefa {task_id} já está com status 'in_progress'. Ignorando inicialização."))
             return
         if status in ["done", "completed"]:
-            print(f"[MÉTRICAS] Aviso: Tarefa {task_id} já está concluída ({status}). Ignorando inicialização.")
+            print(cli_colors.yellow(f"[MÉTRICAS] Aviso: Tarefa {task_id} já está concluída ({status}). Ignorando inicialização."))
             return
             
         task_data["status"] = "in_progress"
@@ -242,12 +269,18 @@ def start_task(task_id):
         if task_data.get("llm_calls", 0) == 0:
             task_data["llm_calls"] = 1
             
-        print(f"[MÉTRICAS] Tarefa {task_id} em progresso. Início/Retomada: {now_str}.")
+        print(cli_colors.green(f"[MÉTRICAS] Tarefa {task_id} em progresso. Início/Retomada: {now_str}."))
         
         update_activity_and_alerts(task_id, task_data, now, old_status, old_alerts)
 
 def increment_metric(task_id, metric_name):
     now = datetime.now(timezone.utc)
+    
+    m_data = load_metrics()
+    if task_id not in m_data:
+        import decision_pipeline
+        decision_pipeline.ensure_task_decision(task_id)
+        
     with metrics_transaction() as metrics:
         add_pending_task_raw(metrics, task_id)
         
@@ -261,15 +294,15 @@ def increment_metric(task_id, metric_name):
             
         if metric_name == "blocks":
             task_data["status"] = "blocked"
-            print(f"[MÉTRICAS] Tarefa {task_id} BLOQUEADA. Total de bloqueios: {task_data['blocks']}.")
+            print(cli_colors.red(f"[MÉTRICAS] Tarefa {task_id} BLOQUEADA. Total de bloqueios: {task_data['blocks']}."))
         else:
             if task_data.get("status") == "pending":
                 now_str = now.isoformat()
                 task_data["status"] = "in_progress"
                 task_data["start_time"] = now_str
-                print(f"[MÉTRICAS] Tarefa {task_id} iniciada implicitamente (trabalho ativo) em {now_str}.")
+                print(cli_colors.green(f"[MÉTRICAS] Tarefa {task_id} iniciada implicitamente (trabalho ativo) em {now_str}."))
                 
-        print(f"[MÉTRICAS] Tarefa {task_id} atualizada: {metric_name} = {task_data[metric_name]}.")
+        print(cli_colors.blue(f"[MÉTRICAS] Tarefa {task_id} atualizada: {metric_name} = {task_data[metric_name]}."))
         
         update_activity_and_alerts(task_id, task_data, now, old_status, old_alerts)
 
@@ -277,6 +310,11 @@ def complete_task(task_id):
     now = datetime.now(timezone.utc)
     now_str = now.isoformat()
     
+    m_data = load_metrics()
+    if task_id not in m_data:
+        import decision_pipeline
+        decision_pipeline.ensure_task_decision(task_id)
+        
     with metrics_transaction() as metrics:
         add_pending_task_raw(metrics, task_id)
         
@@ -286,7 +324,7 @@ def complete_task(task_id):
         
         status = task_data.get("status")
         if status in ["done", "completed"]:
-            print(f"[MÉTRICAS] Aviso: Tarefa {task_id} já está concluída ({status}). Ignorando conclusão.")
+            print(cli_colors.yellow(f"[MÉTRICAS] Aviso: Tarefa {task_id} já está concluída ({status}). Ignorando conclusão."))
             return
             
         start_str = task_data.get("start_time")
@@ -305,7 +343,11 @@ def complete_task(task_id):
         task_data["duration_seconds"] = int(duration)
         task_data["llm_calls"] = task_data.get("llm_calls", 0) + 1
         
-        print(f"[MÉTRICAS] Tarefa {task_id} concluída em {now_str}. Duração: {format_duration(duration)}.")
+        print(cli_colors.green(f"[MÉTRICAS] Tarefa {task_id} concluída em {now_str}. Duração: {format_duration(duration)}."))
+        
+        # Consistent status updates in TASKS.md when completed via metrics CLI
+        import decision_pipeline
+        decision_pipeline.update_local_task_status(task_id, "done")
         
         update_activity_and_alerts(task_id, task_data, now, old_status, old_alerts)
 

@@ -1,0 +1,96 @@
+#!/usr/bin/env python3
+import os
+import sys
+import re
+
+# Ensure scripts/ directory is in the python path
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+SCRIPT_DIR = os.path.join(ROOT_DIR, "scripts")
+if SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, SCRIPT_DIR)
+
+import cli_colors
+from governance_loader import load_governance_rules
+
+def print_help():
+    print(cli_colors.bold(cli_colors.blue("==================================================")))
+    print(cli_colors.bold(cli_colors.blue("            GovernAI — Interface CLI              ")))
+    print(cli_colors.bold(cli_colors.blue("==================================================")))
+    print(f"Uso: {cli_colors.bold('./governai')} {cli_colors.cyan('<comando>')} [opções]")
+    print()
+    print(cli_colors.bold("Comandos principais:"))
+    print(f"  {cli_colors.green('run')} | {cli_colors.green('sync')}       Executa o sincronizador + pipeline de decisão")
+    print(f"  {cli_colors.green('start')} {cli_colors.cyan('<task_id>')}    Inicia o cronômetro da tarefa")
+    print(f"  {cli_colors.green('block')} {cli_colors.cyan('<task_id>')}    Bloqueia a tarefa e envia alertas")
+    print(f"  {cli_colors.green('complete')} {cli_colors.cyan('<task_id>')} Conclui a tarefa e para o cronômetro")
+    print(f"  {cli_colors.green('report')}            Exibe o relatório de métricas em Markdown")
+    print()
+    print(cli_colors.bold("Opções globais:"))
+    print(f"  {cli_colors.yellow('-h, --help')}       Exibe esta mensagem de ajuda")
+    print()
+    print(cli_colors.bold("Exemplos de uso:"))
+    print(f"  ./governai run")
+    print(f"  ./governai start TASK-001")
+    print(f"  ./governai block TASK-001")
+    print(f"  ./governai complete TASK-001")
+    print(f"  ./governai report")
+    print(cli_colors.bold(cli_colors.blue("==================================================")))
+
+def main():
+    # Load governance rules first (fail-safe check)
+    rules = load_governance_rules()
+    
+    if len(sys.argv) < 2 or sys.argv[1] in ["-h", "--help", "help"]:
+        print_help()
+        sys.exit(0)
+        
+    cmd = sys.argv[1].lower()
+    
+    if cmd in ["run", "sync"]:
+        print(cli_colors.blue("[INFO] Iniciando sincronização das tarefas com o board remoto..."))
+        try:
+            import sync_tasks
+            sync_tasks.main()
+        except Exception as e:
+            print(cli_colors.red(f"[ERRO] Falha durante a execução da sincronização: {e}"), file=sys.stderr)
+            sys.exit(1)
+            
+    elif cmd in ["start", "block", "complete"]:
+        if len(sys.argv) < 3:
+            print(cli_colors.red(f"[ERRO] O identificador da tarefa (ex: TASK-001) é obrigatório para o comando '{cmd}'."), file=sys.stderr)
+            sys.exit(1)
+            
+        task_id = sys.argv[2].upper()
+        # Regex validation to support TASK-XXX or TASK-GOV-XXX formats
+        if not re.match(r"^TASK-[A-Z0-9_-]+$", task_id):
+            print(cli_colors.red(f"[ERRO] Formato de ID de tarefa inválido: '{task_id}'. Use o formato padrão TASK-XXX."), file=sys.stderr)
+            sys.exit(1)
+            
+        try:
+            import metrics
+            if cmd == "start":
+                metrics.start_task(task_id)
+            elif cmd == "block":
+                metrics.increment_metric(task_id, "blocks")
+            elif cmd == "complete":
+                metrics.complete_task(task_id)
+        except Exception as e:
+            print(cli_colors.red(f"[ERRO] Falha ao executar comando '{cmd}' para a tarefa {task_id}: {e}"), file=sys.stderr)
+            sys.exit(1)
+            
+    elif cmd == "report":
+        try:
+            import metrics
+            metrics.report_metrics()
+        except Exception as e:
+            print(cli_colors.red(f"[ERRO] Falha ao gerar relatório de métricas: {e}"), file=sys.stderr)
+            sys.exit(1)
+            
+    else:
+        print(cli_colors.red(f"[ERRO] Comando desconhecido: '{cmd}'."), file=sys.stderr)
+        print()
+        print_help()
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
