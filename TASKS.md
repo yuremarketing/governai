@@ -138,7 +138,7 @@ Garantir a consistência de estados e conteúdo de todas as tarefas entre o arqu
 
 ### TASK-016 — Implementar sistema de alertas no GovernAI
 
-**Status:** [ ]
+**Status:** [x]
 **Descrição:**
 Implementar um sistema de alertas no GovernAI para identificar tasks travadas, excesso de revisões e tempos anormais de execução com base nas métricas coletadas.
 

@@ -11,6 +11,24 @@ METRICS_FILE = os.path.join(BASE_DIR, "logs", "metrics.json")
 LOCK_FILE = METRICS_FILE + ".lock"
 LOCK_TIMEOUT = 5.0  # segundos
 
+def load_env():
+    env_file = os.path.join(BASE_DIR, ".env")
+    if os.path.exists(env_file):
+        with open(env_file, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    if "=" in line:
+                        key, val = line.split("=", 1)
+                        os.environ[key.strip()] = val.strip()
+
+load_env()
+
+LIMIT_REVISIONS = int(os.environ.get("GOVERNAI_LIMIT_REVISIONS", 3))
+LIMIT_DURATION_SECS = int(os.environ.get("GOVERNAI_LIMIT_DURATION", 1800))  # 30 minutos
+LIMIT_INACTIVE_SECS = int(os.environ.get("GOVERNAI_LIMIT_INACTIVE", 900))   # 15 minutos
+
+
 def acquire_lock():
     for _ in range(50):  # tenta por até 5 segundos (50 * 0.1)
         try:
@@ -83,6 +101,76 @@ def format_duration(seconds):
     else:
         return f"{s}s"
 
+def parse_iso_datetime(dt_str):
+    if not dt_str:
+        return None
+    try:
+        dt = datetime.fromisoformat(dt_str)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except Exception:
+        return None
+
+def check_alerts(task_id, task_data, now):
+    alerts = {}
+    status = task_data.get("status", "pending")
+    if status in ["done", "completed"]:
+        return alerts
+        
+    revisions = task_data.get("revisions", 0)
+    if revisions > LIMIT_REVISIONS:
+        alerts["revisions"] = f"Excesso de Revisões ({revisions}/{LIMIT_REVISIONS})"
+        
+    if status in ["in_progress", "blocked"]:
+        start_time_str = task_data.get("start_time")
+        if start_time_str:
+            start_time = parse_iso_datetime(start_time_str)
+            if start_time:
+                duration = (now - start_time).total_seconds()
+                if duration > LIMIT_DURATION_SECS:
+                    alerts["duration"] = f"Tempo de Execução Excessivo ({format_duration(duration)} > {format_duration(LIMIT_DURATION_SECS)})"
+                    
+        last_activity_str = task_data.get("last_activity_time")
+        if last_activity_str:
+            last_activity = parse_iso_datetime(last_activity_str)
+            if last_activity:
+                inactivity = (now - last_activity).total_seconds()
+                if inactivity > LIMIT_INACTIVE_SECS:
+                    alerts["inactive"] = f"Task Travada/Inativa ({format_duration(inactivity)} sem atividade)"
+                    
+    return alerts
+
+def update_activity_and_alerts(task_id, task_data, now, old_status, old_alerts_keys):
+    new_status = task_data.get("status", "pending")
+    new_alerts = check_alerts(task_id, task_data, now)
+    
+    now_str = now.isoformat()
+    task_data["last_activity_time"] = now_str
+    
+    new_alerts_keys = set(new_alerts.keys())
+    
+    should_print = False
+    
+    added_alerts = new_alerts_keys - old_alerts_keys
+    if added_alerts:
+        should_print = True
+        
+    if old_status != new_status and new_alerts_keys:
+        should_print = True
+        
+    if old_alerts_keys and not new_alerts_keys:
+        print(f"✅ [MÉTRICAS] Alertas resolvidos para a tarefa {task_id}. A tarefa está em conformidade.")
+        task_data["active_alerts"] = []
+        return
+        
+    if should_print:
+        print(f"⚠️ [ALERTA DE GOVERNANÇA] tarefa {task_id} ({new_status}):")
+        for k in sorted(new_alerts_keys):
+            print(f"   - {new_alerts[k]}")
+            
+    task_data["active_alerts"] = sorted(list(new_alerts_keys))
+
 def add_pending_task_raw(metrics, task_id):
     if task_id not in metrics:
         metrics[task_id] = {
@@ -92,24 +180,32 @@ def add_pending_task_raw(metrics, task_id):
             "duration_seconds": None,
             "revisions": 0,
             "blocks": 0,
-            "llm_calls": 0
+            "llm_calls": 0,
+            "last_activity_time": None,
+            "active_alerts": []
         }
 
 def add_pending_task(task_id):
+    now = datetime.now(timezone.utc)
     with metrics_transaction() as metrics:
         if task_id in metrics:
             print(f"[MÉTRICAS] Aviso: Tarefa {task_id} já registrada com status '{metrics[task_id].get('status')}'.")
             return
         add_pending_task_raw(metrics, task_id)
+        metrics[task_id]["last_activity_time"] = now.isoformat()
         print(f"[MÉTRICAS] Tarefa {task_id} registrada como pendente.")
 
 def start_task(task_id):
-    now_str = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc)
+    now_str = now.isoformat()
     with metrics_transaction() as metrics:
-        # Auto-cria como pending caso não exista
         add_pending_task_raw(metrics, task_id)
         
-        status = metrics[task_id].get("status")
+        task_data = metrics[task_id]
+        old_status = task_data.get("status")
+        old_alerts = set(task_data.get("active_alerts", []) if isinstance(task_data.get("active_alerts"), list) else [])
+        
+        status = task_data.get("status")
         if status in ["in_progress"]:
             print(f"[MÉTRICAS] Aviso: Tarefa {task_id} já está com status 'in_progress'. Ignorando inicialização.")
             return
@@ -117,52 +213,63 @@ def start_task(task_id):
             print(f"[MÉTRICAS] Aviso: Tarefa {task_id} já está concluída ({status}). Ignorando inicialização.")
             return
             
-        metrics[task_id]["status"] = "in_progress"
-        if not metrics[task_id].get("start_time"):
-            metrics[task_id]["start_time"] = now_str
-        if metrics[task_id].get("llm_calls", 0) == 0:
-            metrics[task_id]["llm_calls"] = 1
+        task_data["status"] = "in_progress"
+        if not task_data.get("start_time"):
+            task_data["start_time"] = now_str
+        if task_data.get("llm_calls", 0) == 0:
+            task_data["llm_calls"] = 1
             
         print(f"[MÉTRICAS] Tarefa {task_id} em progresso. Início/Retomada: {now_str}.")
+        
+        update_activity_and_alerts(task_id, task_data, now, old_status, old_alerts)
 
 def increment_metric(task_id, metric_name):
+    now = datetime.now(timezone.utc)
     with metrics_transaction() as metrics:
-        # Auto-cria como pending caso não exista
         add_pending_task_raw(metrics, task_id)
         
-        metrics[task_id][metric_name] = metrics[task_id].get(metric_name, 0) + 1
+        task_data = metrics[task_id]
+        old_status = task_data.get("status")
+        old_alerts = set(task_data.get("active_alerts", []) if isinstance(task_data.get("active_alerts"), list) else [])
+        
+        task_data[metric_name] = task_data.get(metric_name, 0) + 1
         if metric_name != "llm_calls":
-            metrics[task_id]["llm_calls"] = metrics[task_id].get("llm_calls", 0) + 1
+            task_data["llm_calls"] = task_data.get("llm_calls", 0) + 1
             
         if metric_name == "blocks":
-            metrics[task_id]["status"] = "blocked"
-            print(f"[MÉTRICAS] Tarefa {task_id} BLOQUEADA. Total de bloqueios: {metrics[task_id]['blocks']}.")
+            task_data["status"] = "blocked"
+            print(f"[MÉTRICAS] Tarefa {task_id} BLOQUEADA. Total de bloqueios: {task_data['blocks']}.")
         else:
-            if metrics[task_id].get("status") == "pending":
-                now_str = datetime.now(timezone.utc).isoformat()
-                metrics[task_id]["status"] = "in_progress"
-                metrics[task_id]["start_time"] = now_str
+            if task_data.get("status") == "pending":
+                now_str = now.isoformat()
+                task_data["status"] = "in_progress"
+                task_data["start_time"] = now_str
                 print(f"[MÉTRICAS] Tarefa {task_id} iniciada implicitamente (trabalho ativo) em {now_str}.")
                 
-        print(f"[MÉTRICAS] Tarefa {task_id} atualizada: {metric_name} = {metrics[task_id][metric_name]}.")
+        print(f"[MÉTRICAS] Tarefa {task_id} atualizada: {metric_name} = {task_data[metric_name]}.")
+        
+        update_activity_and_alerts(task_id, task_data, now, old_status, old_alerts)
 
 def complete_task(task_id):
     now = datetime.now(timezone.utc)
     now_str = now.isoformat()
     
     with metrics_transaction() as metrics:
-        # Auto-cria como pending caso não exista
         add_pending_task_raw(metrics, task_id)
         
-        status = metrics[task_id].get("status")
+        task_data = metrics[task_id]
+        old_status = task_data.get("status")
+        old_alerts = set(task_data.get("active_alerts", []) if isinstance(task_data.get("active_alerts"), list) else [])
+        
+        status = task_data.get("status")
         if status in ["done", "completed"]:
             print(f"[MÉTRICAS] Aviso: Tarefa {task_id} já está concluída ({status}). Ignorando conclusão.")
             return
             
-        start_str = metrics[task_id].get("start_time")
+        start_str = task_data.get("start_time")
         if not start_str:
             start_str = now_str
-            metrics[task_id]["start_time"] = start_str
+            task_data["start_time"] = start_str
             
         try:
             start_time = datetime.fromisoformat(start_str)
@@ -170,12 +277,14 @@ def complete_task(task_id):
         except Exception as e:
             duration = 0
             
-        metrics[task_id]["status"] = "done"
-        metrics[task_id]["end_time"] = now_str
-        metrics[task_id]["duration_seconds"] = int(duration)
-        metrics[task_id]["llm_calls"] = metrics[task_id].get("llm_calls", 0) + 1
+        task_data["status"] = "done"
+        task_data["end_time"] = now_str
+        task_data["duration_seconds"] = int(duration)
+        task_data["llm_calls"] = task_data.get("llm_calls", 0) + 1
         
         print(f"[MÉTRICAS] Tarefa {task_id} concluída em {now_str}. Duração: {format_duration(duration)}.")
+        
+        update_activity_and_alerts(task_id, task_data, now, old_status, old_alerts)
 
 def report_metrics():
     metrics = load_metrics()
@@ -184,9 +293,10 @@ def report_metrics():
         return
         
     print("## 📊 Relatório de Métricas do GovernAI\n")
-    print("| Tarefa | Status | Início (UTC) | Duração | Revisões (Commits) | Bloqueios | Invocações LLM |")
-    print("| :--- | :--- | :--- | :--- | :--- | :--- | :--- |")
+    print("| Tarefa | Status | Início (UTC) | Duração | Revisões (Commits) | Bloqueios | Invocações LLM | Alertas |")
+    print("| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |")
     
+    now = datetime.now(timezone.utc)
     for task_id, data in sorted(metrics.items()):
         status_raw = data.get("status", "in_progress")
         if status_raw in ["done", "completed"]:
@@ -210,7 +320,13 @@ def report_metrics():
         blocks = data.get("blocks", 0)
         llm_calls = data.get("llm_calls", 0)
         
-        print(f"| {task_id} | {status} | {start_t} | {duration} | {revisions} | {blocks} | {llm_calls} |")
+        alerts_dict = check_alerts(task_id, data, now)
+        if alerts_dict:
+            alerts_str = ", ".join(alerts_dict.values())
+        else:
+            alerts_str = "-"
+            
+        print(f"| {task_id} | {status} | {start_t} | {duration} | {revisions} | {blocks} | {llm_calls} | {alerts_str} |")
     print()
 
 def print_usage():
