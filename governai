@@ -2,6 +2,7 @@
 import os
 import sys
 import re
+import json
 
 # Ensure scripts/ directory is in the python path
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -18,37 +19,226 @@ def print_help():
     print(cli_colors.bold(cli_colors.blue("==================================================")))
     print(f"Uso: {cli_colors.bold('./governai')} {cli_colors.cyan('<comando>')} [opções]")
     print()
-    print(cli_colors.bold("Comandos principais:"))
-    print(f"  {cli_colors.green('run')} | {cli_colors.green('sync')}       Executa o sincronizador + pipeline de decisão")
-    print(f"  {cli_colors.green('start')} {cli_colors.cyan('<task_id>')}    Inicia o cronômetro da tarefa")
-    print(f"  {cli_colors.green('block')} {cli_colors.cyan('<task_id>')}    Bloqueia a tarefa e envia alertas")
-    print(f"  {cli_colors.green('complete')} {cli_colors.cyan('<task_id>')} Conclui a tarefa e para o cronômetro")
-    print(f"  {cli_colors.green('approve')} {cli_colors.cyan('<task_id>')} [resumo] Exibe o contexto de orientação de aprovação")
-    print(f"  {cli_colors.green('confirm')} {cli_colors.cyan('<task_id> <ação> <valor> <impacto>')} Exibe confirmação de ação")
-    print(f"  {cli_colors.green('report')}            Exibe o relatório de métricas em Markdown")
+    print(cli_colors.bold("Comandos principais (atalhos entre parênteses):"))
+    print(f"  {cli_colors.green('run')} | {cli_colors.green('sync')} ({cli_colors.green('sy')})     Sincroniza tarefas locais e remotas")
+    print(f"  {cli_colors.green('start')} ({cli_colors.green('s')}) {cli_colors.cyan('[task_id]')}  Inicia o trabalho ativo na tarefa")
+    print(f"  {cli_colors.green('block')} ({cli_colors.green('b')}) {cli_colors.cyan('[task_id]')}  Bloqueia a tarefa ativa por impedimento")
+    print(f"  {cli_colors.green('complete')} ({cli_colors.green('c')}) {cli_colors.cyan('[task_id]')} Conclui a tarefa e para o cronômetro")
+    print(f"  {cli_colors.green('approve')} ({cli_colors.green('a')}) {cli_colors.cyan('[task_id]')} Exibe orientação de aprovação do plano")
+    print(f"  {cli_colors.green('confirm')} ({cli_colors.green('cf')}) {cli_colors.cyan('<task_id>')} Exibe confirmação de ação de terminal")
+    print(f"  {cli_colors.green('report')} ({cli_colors.green('r')})          Exibe o relatório de métricas em Markdown")
     print()
     print(cli_colors.bold("Opções globais:"))
     print(f"  {cli_colors.yellow('-h, --help')}       Exibe esta mensagem de ajuda")
     print()
     print(cli_colors.bold("Exemplos de uso:"))
-    print(f"  ./governai run")
-    print(f"  ./governai start TASK-001")
-    print(f"  ./governai block TASK-001")
-    print(f"  ./governai complete TASK-001")
-    print(f"  ./governai approve TASK-001 \"Refatoração do banco de dados\"")
-    print(f"  ./governai confirm TASK-001 \"Enviar opção\" \"1\" \"Iniciar a execução da tarefa\"")
-    print(f"  ./governai report")
+    print(f"  ./governai sy")
+    print(f"  ./governai s 6")
+    print(f"  ./governai c gov-6")
+    print(f"  ./governai r")
     print(cli_colors.bold(cli_colors.blue("==================================================")))
+
+def get_all_tasks():
+    tasks_file = os.path.join(ROOT_DIR, "TASKS.md")
+    if not os.path.exists(tasks_file):
+        return []
+    try:
+        with open(tasks_file, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        sections = content.split("---")
+        tasks = []
+        header_re = re.compile(r"###\s+(TASK-[A-Z0-9_-]+)\s*[-—]\s*(.+)")
+        
+        for section in sections:
+            section = section.strip()
+            header_match = header_re.search(section)
+            if not header_match:
+                continue
+            
+            task_id = header_match.group(1)
+            title = header_match.group(2).strip()
+            
+            status_match = re.search(r"\*\*Status:\*\*\s*\[(.*?)\]", section)
+            status_val = status_match.group(1).strip() if status_match else ""
+            
+            status_tag = "done" if status_val.lower() == 'x' else ("in_progress" if status_val == '/' else "todo")
+            
+            tasks.append({
+                "id": task_id,
+                "title": title,
+                "status": status_tag
+            })
+        return tasks
+    except Exception:
+        return []
+
+def resolve_task_id_with_prompt(task_arg, cmd):
+    tasks = get_all_tasks()
+    if not tasks:
+        return task_arg.upper() if task_arg else None
+
+    # Se o argumento não for fornecido, listar interativamente baseando-se no contexto
+    if not task_arg:
+        # Filtrar tarefas
+        if cmd == "start":
+            filtered = [t for t in tasks if t["status"] in ["todo", "in_progress"]]
+            status_desc = "pendentes ou ativas"
+        elif cmd in ["complete", "block"]:
+            filtered = [t for t in tasks if t["status"] == "in_progress"]
+            status_desc = "ativas (em progresso)"
+        elif cmd == "approve":
+            filtered = [t for t in tasks if t["status"] in ["todo", "in_progress"]]
+            status_desc = "pendentes ou em progresso"
+        else:
+            filtered = tasks
+            status_desc = "cadastradas"
+            
+        if not filtered:
+            filtered = tasks
+            status_desc = "cadastradas"
+            
+        print(cli_colors.blue("-" * 50))
+        print(cli_colors.bold(cli_colors.blue("GovernAI — Escolha uma tarefa")))
+        print(cli_colors.blue("-" * 50))
+        print(f"Selecione uma das tarefas {status_desc}:")
+        print()
+        
+        for idx, t in enumerate(filtered, 1):
+            status_emoji = "⏳" if t["status"] == "todo" else ("🚧" if t["status"] == "in_progress" else "✅")
+            print(f"{idx}) {t['id']} {status_emoji} — {t['title']}")
+            
+        print()
+        choice = ""
+        while not choice.isdigit() or int(choice) < 1 or int(choice) > len(filtered):
+            try:
+                choice = input(cli_colors.bold(f"Selecione um número (1-{len(filtered)}) ou Enter para cancelar: ")).strip()
+                if not choice:
+                    print(cli_colors.yellow("[AVISO] Seleção cancelada."))
+                    sys.exit(0)
+            except (KeyboardInterrupt, EOFError):
+                print()
+                print(cli_colors.yellow("[AVISO] Seleção cancelada."))
+                sys.exit(0)
+                
+        selected = filtered[int(choice) - 1]
+        return selected["id"]
+
+    # Se o argumento foi fornecido, resolver ID parcial
+    task_arg_clean = task_arg.strip().upper()
+    
+    # Se já for o ID exato
+    exact_matches = [t for t in tasks if t["id"] == task_arg_clean]
+    if exact_matches:
+        return task_arg_clean
+
+    # Buscar correspondências parciais
+    matches = []
+    is_numeric_input = False
+    input_num = None
+    try:
+        input_num = int(task_arg_clean)
+        is_numeric_input = True
+    except ValueError:
+        pass
+
+    for t in tasks:
+        parts = t["id"].split("-")
+        last_part = parts[-1]
+        
+        # Check numeric suffix match
+        is_num_match = False
+        try:
+            if int(last_part) == input_num:
+                is_num_match = True
+        except (ValueError, TypeError):
+            pass
+            
+        if is_numeric_input:
+            if is_num_match:
+                matches.append(t)
+        else:
+            def normalize_id(text):
+                # Replace sequences of digits with their integer value and ignore dashes
+                return re.sub(r'0*(\d+)', r'\1', text.replace("-", "").upper())
+            norm_id = normalize_id(t["id"])
+            norm_arg = normalize_id(task_arg_clean)
+            if norm_arg in norm_id:
+                matches.append(t)
+            
+    if not matches:
+        return task_arg_clean
+        
+    matches.sort(key=lambda x: x["id"])
+        
+    if len(matches) == 1:
+        return matches[0]["id"]
+        
+    # Ambiguidade: mais de uma tarefa encontrada
+    print(cli_colors.blue("-" * 50))
+    print(cli_colors.bold(cli_colors.yellow("GovernAI — Escolha entre as tarefas encontradas")))
+    print(cli_colors.blue("-" * 50))
+    print(f"Sua busca por '{task_arg}' encontrou múltiplas tarefas. Escolha uma:")
+    print()
+    
+    for idx, t in enumerate(matches, 1):
+        print(f"{idx}) {t['id']}")
+        
+    print()
+    choice = ""
+    while not choice.isdigit() or int(choice) < 1 or int(choice) > len(matches):
+        try:
+            choice = input(cli_colors.bold(f"Selecione um número (1-{len(matches)}) ou Enter para cancelar: ")).strip()
+            if not choice:
+                print(cli_colors.yellow("[AVISO] Seleção cancelada."))
+                sys.exit(0)
+        except (KeyboardInterrupt, EOFError):
+            print()
+            print(cli_colors.yellow("[AVISO] Seleção cancelada."))
+            sys.exit(0)
+            
+    selected = matches[int(choice) - 1]
+    return selected["id"]
+
+def resolve_command(cmd_arg):
+    cmd_clean = cmd_arg.strip().lower()
+    mapping = {
+        "s": "start",
+        "start": "start",
+        "c": "complete",
+        "complete": "complete",
+        "b": "block",
+        "block": "block",
+        "a": "approve",
+        "approve": "approve",
+        "cf": "confirm",
+        "confirm": "confirm",
+        "r": "report",
+        "report": "report",
+        "sy": "sync",
+        "sync": "sync",
+        "run": "run"
+    }
+    return mapping.get(cmd_clean, cmd_clean)
 
 def main():
     # Load governance rules first (fail-safe check)
     rules = load_governance_rules()
     
     if len(sys.argv) < 2 or sys.argv[1] in ["-h", "--help", "help"]:
+        tasks = get_all_tasks()
+        active_tasks = [t for t in tasks if t["status"] == "in_progress"]
+        
         print_help()
+        
+        if active_tasks:
+            print(cli_colors.bold(cli_colors.yellow("Status do Projeto:")))
+            for t in active_tasks:
+                print(f"  🚧  Tarefa ativa no momento: {cli_colors.cyan(t['id'])} — {t['title']}")
+            print()
         sys.exit(0)
         
-    cmd = sys.argv[1].lower()
+    cmd = resolve_command(sys.argv[1])
     
     if cmd in ["run", "sync"]:
         print(cli_colors.blue("[INFO] Iniciando sincronização das tarefas com o board remoto..."))
@@ -59,15 +249,12 @@ def main():
             print(cli_colors.red(f"[ERRO] Falha durante a execução da sincronização: {e}"), file=sys.stderr)
             sys.exit(1)
             
-    elif cmd in ["start", "block", "complete", "approve", "confirm"]:
-        if len(sys.argv) < 3:
-            print(cli_colors.red(f"[ERRO] O identificador da tarefa (ex: TASK-001) é obrigatório para o comando '{cmd}'."), file=sys.stderr)
-            sys.exit(1)
-            
-        task_id = sys.argv[2].upper()
-        # Regex validation to support TASK-XXX or TASK-GOV-XXX formats
-        if not re.match(r"^TASK-[A-Z0-9_-]+$", task_id):
-            print(cli_colors.red(f"[ERRO] Formato de ID de tarefa inválido: '{task_id}'. Use o formato padrão TASK-XXX."), file=sys.stderr)
+    elif cmd in ["start", "block", "complete", "approve"]:
+        task_arg = sys.argv[2] if len(sys.argv) > 2 else None
+        task_id = resolve_task_id_with_prompt(task_arg, cmd)
+        
+        if not task_id:
+            print(cli_colors.red(f"[ERRO] O identificador da tarefa é obrigatório para o comando '{cmd}'."), file=sys.stderr)
             sys.exit(1)
             
         try:
@@ -84,17 +271,31 @@ def main():
                 summary = sys.argv[3] if len(sys.argv) > 3 else None
                 import decision_pipeline
                 decision_pipeline.print_approval_context(task_id, summary=summary)
-            elif cmd == "confirm":
-                if len(sys.argv) < 6:
-                    print(cli_colors.red("[ERRO] Para o comando 'confirm', os argumentos <ação> <valor_do_input> <impacto> são obrigatórios."), file=sys.stderr)
-                    sys.exit(1)
-                action = sys.argv[3]
-                input_val = sys.argv[4]
-                impact = sys.argv[5]
-                import decision_pipeline
-                decision_pipeline.print_action_confirmation(task_id, action, input_val, impact)
         except Exception as e:
             print(cli_colors.red(f"[ERRO] Falha ao executar comando '{cmd}' para a tarefa {task_id}: {e}"), file=sys.stderr)
+            sys.exit(1)
+            
+    elif cmd == "confirm":
+        if len(sys.argv) < 3:
+            print(cli_colors.red("[ERRO] O identificador da tarefa é obrigatório para o comando 'confirm'."), file=sys.stderr)
+            sys.exit(1)
+            
+        task_arg = sys.argv[2]
+        task_id = resolve_task_id_with_prompt(task_arg, "confirm")
+        
+        if len(sys.argv) < 6:
+            print(cli_colors.red("[ERRO] Para o comando 'confirm', os argumentos <ação> <valor_do_input> <impacto> são obrigatórios."), file=sys.stderr)
+            sys.exit(1)
+            
+        action = sys.argv[3]
+        input_val = sys.argv[4]
+        impact = sys.argv[5]
+        
+        try:
+            import decision_pipeline
+            decision_pipeline.print_action_confirmation(task_id, action, input_val, impact)
+        except Exception as e:
+            print(cli_colors.red(f"[ERRO] Falha ao executar confirmação de ação para {task_id}: {e}"), file=sys.stderr)
             sys.exit(1)
             
     elif cmd == "report":
@@ -106,7 +307,7 @@ def main():
             sys.exit(1)
             
     else:
-        print(cli_colors.red(f"[ERRO] Comando desconhecido: '{cmd}'."), file=sys.stderr)
+        print(cli_colors.red(f"[ERRO] Comando desconhecido: '{sys.argv[1]}'."), file=sys.stderr)
         print()
         print_help()
         sys.exit(1)

@@ -340,15 +340,17 @@ Implementar um mecanismo de coleta de métricas para o GovernAI que registre o t
 
 ## 🟢 Prioridade Baixa
 
-### TASK-006 — Planejar CLI do GovernAI
+### TASK-006 — Melhorar a experiência da CLI (UX/UI)
 
-**Status:** [ ]
+**Status:** [x]
 **Descrição:**
-Definir como será uma CLI para criação de projetos com GovernAI.
+Melhorar a facilidade de uso do GovernAI simplificando comandos, adicionando atalhos, resolução de IDs parciais de tarefas com desambiguação e menus de seleção interativos.
 
 **Critérios de aceite:**
-- Estrutura inicial definida
-- Comandos principais descritos
+- Adicionar atalhos de uma única letra para os comandos da CLI.
+- Implementar resolução automática de IDs parciais (ex: "6" -> "TASK-GOV-006").
+- Resolver ambiguidades exibindo menu de seleção interativo para o usuário.
+- Permitir listagem interativa de tarefas caso o comando seja rodado sem ID.
 
 ---
 
