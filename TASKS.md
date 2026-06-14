@@ -110,6 +110,19 @@ Implementar um mecanismo anti-loop na sincronização bidirecional entre o `TASK
 
 ---
 
+### TASK-014 — Adicionar status interno alinhado com o fluxo no metrics.json
+
+**Status:** [ ]
+**Descrição:**
+Adicionar e gerenciar um campo de status interno estruturado no arquivo local `logs/metrics.json` para cada tarefa, suportando os estados `pending`, `in_progress`, `done` e `blocked` em total consistência com o ciclo de vida do GovernAI.
+
+**Critérios de aceite:**
+- Configuração do status padrão como `pending` ao inicializar o rastreamento da tarefa sem iniciá-la imediatamente.
+- Suporte para comandos de transição de status em `scripts/metrics.py` (Ex: transição para `blocked` e retorno para `in_progress`).
+- Sincronização automática das transições do `metrics.json` nas regras descritas em `.antigravityrules`.
+
+---
+
 ---
 
 ## 🟡 Prioridade Média
