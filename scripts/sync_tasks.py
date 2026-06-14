@@ -10,6 +10,9 @@ BASE_DIR = os.path.dirname(SCRIPT_DIR)
 TASKS_FILE = os.path.join(BASE_DIR, "TASKS.md")
 ENV_FILE = os.path.join(BASE_DIR, ".env")
 
+sys.path.append(SCRIPT_DIR)
+from metrics import start_task, complete_task, load_metrics, metrics_transaction, add_pending_task_raw
+
 def load_env():
     env = {}
     if os.path.exists(ENV_FILE):
@@ -331,6 +334,43 @@ def main():
         body = t["body"]
         is_done = t["is_done"]
         is_in_progress = t["is_in_progress"]
+        
+        # Sincronização e consistência atômica com o metrics.json
+        task_id = t["id"]
+        target_metrics_status = "done" if is_done else ("in_progress" if is_in_progress else "pending")
+        
+        try:
+            m_data = load_metrics()
+            current_metrics_status = m_data.get(task_id, {}).get("status", "pending") if task_id in m_data else None
+        except Exception:
+            current_metrics_status = None
+            
+        if current_metrics_status is None:
+            print(f"Inicializando '{task_id}' como pending no metrics.json...")
+            with metrics_transaction() as m:
+                add_pending_task_raw(m, task_id)
+            current_metrics_status = "pending"
+            
+        if current_metrics_status != target_metrics_status:
+            # Exceção de Bloqueio (Regra da TASK-015):
+            # Se target_metrics_status for 'pending' mas no metrics for 'blocked', preservamos o 'blocked' e avisamos.
+            if target_metrics_status == "pending" and current_metrics_status == "blocked":
+                print(f"\n[AVISO DE DIVERGÊNCIA] A tarefa {task_id} está marcada como 'blocked' no metrics.json, "
+                      f"mas o TASKS.md indica backlog '[ ]' (pending). Preservando o estado 'blocked' para investigação manual.\n")
+            else:
+                print(f"Consistência: Sincronizando status de '{task_id}' no metrics.json: {current_metrics_status} -> {target_metrics_status}")
+                if target_metrics_status == "in_progress":
+                    start_task(task_id)
+                elif target_metrics_status == "done":
+                    complete_task(task_id)
+                elif target_metrics_status == "pending":
+                    # Força volta para pending resetando tempos
+                    with metrics_transaction() as m:
+                        add_pending_task_raw(m, task_id)
+                        m[task_id]["status"] = "pending"
+                        m[task_id]["start_time"] = None
+                        m[task_id]["end_time"] = None
+                        m[task_id]["duration_seconds"] = None
         
         # Determine target status name
         if is_done:

@@ -125,7 +125,7 @@ Adicionar e gerenciar um campo de status interno estruturado no arquivo local `l
 
 ### TASK-015 — Sincronizar e garantir consistência de estados entre sistemas
 
-**Status:** [ ]
+**Status:** [x]
 **Descrição:**
 Garantir a consistência de estados e conteúdo de todas as tarefas entre o arquivo local `TASKS.md` (definido como fonte única de verdade), o board do GitHub Projects e o arquivo `logs/metrics.json`. Qualquer alteração no `TASKS.md` local deve sincronizar de forma atômica e consistente os estados dos outros dois sistemas.
 
@@ -227,8 +227,6 @@ Definir arquitetura de uma interface visual para gestão do GovernAI.
 **Critérios de aceite:**
 - Ideia de telas
 - Fluxo de navegação
-
----
 
 ---
 
