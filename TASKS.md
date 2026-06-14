@@ -21,7 +21,7 @@ Detalhar melhor o posicionamento do GovernAI como framework de governança para 
 
 ### TASK-002 — Definir casos de uso principais
 
-**Status:** [ ]
+**Status:** [x]
 **Descrição:**
 Mapear os principais cenários onde o GovernAI pode ser utilizado.
 

@@ -33,6 +33,42 @@ O GovernAI implementa um sistema baseado em agentes que:
 
 ---
 
+### 💡 Casos de uso reais (Exemplos Práticos)
+
+Veja como o GovernAI funciona na prática:
+
+#### Caso de Uso 1: O Site de Agendamentos do Pet Shop
+- **A Usuária:** Mariana, dona de um pequeno pet shop de bairro.
+- **O que ela quer criar:** Um site simples para os clientes agendarem banhos e tosas para seus animais de estimação.
+- **Como ela usa a IA:** Mariana abre o assistente de IA e digita: *"Crie uma página onde meu cliente escolhe o dia, o horário e o porte do cachorro para agendar o banho."*
+- **Onde o GovernAI entra:** Sempre que a IA propõe uma nova alteração para criar ou mudar o site, o GovernAI intercepta a ação e exibe uma orientação amigável: *"Mariana, a IA quer criar a tela de escolha de horários. Para garantir que nada quebre no seu site atual, leia nosso Plano de Trabalho à direita antes de autorizar."*
+- **O que muda com o GovernAI:**
+  - **Sem GovernAI:** A IA começa a programar de forma descontrolada. Na tentativa de corrigir um erro simples na listagem de horários, ela acaba bagunçando a tela de preços que já estava pronta. O site para de funcionar de repente, deixando Mariana frustrada e sem saber como voltar à versão anterior.
+  - **Com GovernAI:** A IA só altera o site com a autorização consciente de Mariana. O GovernAI mantém um diário de bordo (histórico) de cada entrega. Se algo der errado, Mariana sabe exatamente o que causou o problema e consegue reverter a mudança com um clique.
+- ➡️ Resultado: o projeto continua organizado, seguro e sob controle.
+
+#### Caso de Uso 2: O Assistente de Vendas no WhatsApp
+- **O Usuário:** Carlos, corretor de seguros autônomo.
+- **O que ele quer criar:** Um sistema automático que responde mensagens de clientes no WhatsApp, tirando dúvidas sobre planos de saúde.
+- **Como ele usa a IA:** Carlos diz para a IA: *"Crie um robô que se conecta ao meu WhatsApp Business e responde aos clientes enviando a tabela de preços em PDF."*
+- **Onde o GovernAI entra:** Quando a IA tenta configurar os arquivos de conexão e pede a senha de acesso (token) da API do WhatsApp de Carlos, o GovernAI intercepta e garante que esses dados confidenciais fiquem salvos em uma pasta oculta e segura, impedindo que a IA envie suas senhas para a internet pública.
+- **O que muda com o GovernAI:**
+  - **Sem GovernAI:** A IA cria o robô e, sem que Carlos perceba, salva as chaves de acesso dele em um arquivo que é enviado para a internet pública. Além disso, por conta de uma falha lógica, o robô entra em um loop infinito, disparando centenas de mensagens repetidas e travando o celular dos clientes.
+  - **Com GovernAI:** O GovernAI protege as chaves confidenciais do corretor de forma automática. Antes de iniciar qualquer envio de mensagens, o sistema exige uma confirmação clara e amigável na tela. Carlos vê o que está acontecendo e autoriza o robô a funcionar sabendo que seus dados estão 100% protegidos.
+- ➡️ Resultado: o projeto continua organizado, seguro e sob controle.
+
+#### Caso de Uso 3: A Planilha Financeira Inteligente
+- **A Usuária:** Juliana, artesã que vende velas aromáticas na internet.
+- **O que ela quer criar:** Uma planilha de vendas automática que calcula o lucro mensal e envia um e-mail com o resumo de faturamento todo dia às 18h.
+- **Como ela usa a IA:** Juliana pede ao assistente: *"Crie um script que soma minhas vendas diárias e me envia um e-mail automático com o total diário."*
+- **Onde o GovernAI entra:** O GovernAI acompanha a criação do script de envio. Antes de o script enviar qualquer e-mail real de teste na internet, o GovernAI exige que Juliana dê autorização explícita e mostra na tela o contexto: *"A ação a seguir enviará um e-mail de teste simulado para juliana@email.com contendo as vendas do dia. Deseja permitir?"*
+- **O que muda com o GovernAI:**
+  - **Sem GovernAI:** A IA ativa o script de envio imediatamente. Por causa de um erro na lógica de repetição, a IA começa a disparar centenas de e-mails vazios e repetidos para a caixa de entrada de Juliana em poucos minutos, bloqueando o e-mail dela por suspeita de spam.
+  - **Com GovernAI:** O envio em lote descontrolado é bloqueado preventivamente. O GovernAI intercepta a tentativa de disparo repetitivo e pede autorização a Juliana. Ela percebe o comportamento estranho no teste inicial simulado e corrige a IA antes que ela envie spams reais.
+- ➡️ Resultado: o projeto continua organizado, seguro e sob controle.
+
+---
+
 ### 🧩 Arquitetura do sistema
 
 GovernAI opera com três pilares:
