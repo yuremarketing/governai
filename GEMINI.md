@@ -41,6 +41,7 @@ GovernAI opera com três pilares:
 - Definida no `.antigravityrules`
 - Controla comportamento do agente
 - Impede execução inválida
+- **Camada de Decisão:** Classifica e roteia solicitações de forma autônoma (veja [decision_layer.md](file:///home/mark/Dev/governai/docs/decision_layer.md))
 
 #### 2. Execução (Tasks)
 - Definida no `TASKS.md`

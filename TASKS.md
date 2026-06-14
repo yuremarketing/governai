@@ -45,14 +45,16 @@ Definir um modelo padrão de task para garantir consistência e facilidade de us
 
 ### TASK-008 — Definir camada de decisão do GovernAI
 
-**Status:** [ ]
+**Status:** [x]
 **Descrição:**
-Especificar e estruturar a camada de decisão do GovernAI que classifica automaticamente as solicitações do usuário entre criação de novas tasks, execução direta de comandos/lógicas determinísticas e identificação de bloqueios.
+Especificar e estruturar a camada de decisão do GovernAI com uma matriz de decisão explícita, ordem de prioridade (determinístico → LLM → humano), critérios detalhados de bloqueio e fallback seguro baseado em nível de confiança.
 
 **Critérios de aceite:**
-- Regras claras de distinção entre criação de tasks, execução direta e bloqueios.
-- Mapeamento das ações correspondentes no fluxo de governança do GovernAI.
-- Documentação técnica da lógica de classificação da camada de decisão.
+- Matriz de decisão explícita com regras determinísticas mapeadas.
+- Definição da ordem de prioridade de classificação (Determinístico → LLM → Humano).
+- Detalhar critérios de bloqueio (impedimento).
+- Fallback seguro baseado em nível de confiança (limiar de classificação da LLM).
+- Documentação completa em docs/decision_layer.md.
 
 ---
 
