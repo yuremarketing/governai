@@ -496,6 +496,39 @@ O usuário receberá uma mensagem clara e amigável no console informando que o 
 
 ---
 
+### TASK-GOV-015 — Melhorar fluxo não-interativo da CLI
+
+**Status:** [ ]
+
+**Objetivo:**
+Eliminar a necessidade de input manual no terminal e melhorar a transparência das ações executadas pelo agente.
+
+**Descrição:**
+Garantir que a CLI do GovernAI funcione de forma limpa e automatizada em fluxos não-interativos ou quando acionada pelo agente, fornecendo flags para bypass de confirmações interativas e exibindo logs informativos no stdout.
+
+**Critérios de Aceite:**
+- [ ] Implementar flags de linha de comando: `--yes` / `-y` para executar ações automaticamente sem prompts interativos de confirmação.
+- [ ] Implementar flag opcional `--action` (ex: `--action=start/complete/etc`) para clareza operacional na linha de comando.
+- [ ] Exibir logs amigáveis e estruturados no stdout durante a execução automática (ex: `[GovernAI] Iniciando TASK-013 — Começar a trabalhar nela agora`).
+- [ ] Manter o fallback interativo quando as flags de execução automática não forem fornecidas.
+- [ ] Evitar loops de prompts confusos, garantindo execução direta e limpa sob o controle do agente.
+
+**Passos de Execução (Checklist):**
+- [ ] Iniciar a tarefa localmente (mudar status para `[/]` em TASKS.md)
+- [ ] Criar o plano técnico de trabalho no painel de controle
+- [ ] Implementar o parser de argumentos na CLI (`governai`) para aceitar `-y`/`--yes` e `--action`
+- [ ] Adaptar a decisão de tomada de tarefas e fluxos interativos para respeitar o bypass do `--yes`
+- [ ] Formatar e polir os logs de progresso impressos no stdout
+- [ ] Concluir a tarefa no arquivo local (status `[x]` em TASKS.md)
+- [ ] Sincronizar as atualizações finais com o painel remoto
+- [ ] Registrar histórico de entrega em walkthrough.md
+- [ ] Realizar o commit e push final para o repositório remoto
+
+**Resultado Esperado:**
+O agente poderá disparar comandos de sincronização, início e conclusão de tarefas de forma direta e sem ser bloqueado por perguntas interativas no terminal, enquanto o usuário final verá mensagens transparentes do que a IA está realizando.
+
+---
+
 ## ✅ Concluídas
 
 _(nenhuma ainda)_
