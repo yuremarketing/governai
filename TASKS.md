@@ -97,6 +97,19 @@ Ajustar o script `scripts/metrics.py` para garantir idempotência. Deve evitar a
 
 ---
 
+### TASK-013 — Implementar mecanismo anti-loop na sincronização
+
+**Status:** [ ]
+**Descrição:**
+Implementar um mecanismo anti-loop na sincronização bidirecional entre o `TASKS.md` local e o board do GitHub Projects, utilizando uma flag de origem (metadata/tag) para identificar a origem das atualizações e evitar o reprocessamento infinito de eventos gerados pelo próprio sistema.
+
+**Critérios de aceite:**
+- Definição de uma convenção ou marcador de origem nas atualizações (ex: comentário HTML ou tag no corpo do card e no `TASKS.md`).
+- Lógica no sincronizador para ignorar e descartar eventos de sincronização se o autor ou origem da mudança for o próprio agente do GovernAI.
+- Teste de estresse simulando atualizações concorrentes para garantir que o fluxo de sincronização converge e encerra sem entrar em loop.
+
+---
+
 ---
 
 ## 🟡 Prioridade Média
