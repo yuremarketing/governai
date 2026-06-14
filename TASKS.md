@@ -464,6 +464,38 @@ O usuário não precisará mais configurar pastas, variáveis de ambiente ou dep
 
 ---
 
+### TASK-GOV-014 — Alertar sobre falhas de conexão ou credenciais da API do GitHub
+
+**Status:** [ ]
+
+**Objetivo:**
+Garantir que o usuário seja alertado de forma clara e amigável caso o GovernAI não consiga sincronizar com o board do GitHub devido a credenciais inválidas ou configuração incorreta.
+
+**Descrição:**
+Atualmente, falhas de conexão com a API do GitHub (ex: erro 401 de token inválido/expirado, ou erro de número de projeto incorreto) interrompem a sincronização sem gerar um alerta claro no banco de dados de alertas ou no relatório de métricas. Implementaremos um mecanismo de captura dessas falhas no script `sync_tasks.py` para registrar um alerta ativo no sistema, facilitando a identificação do problema pelo usuário.
+
+**Critérios de Aceite:**
+- [ ] Tratar exceções de rede e HTTP (especialmente erros 401 e 404) nas chamadas à API do GitHub no script `sync_tasks.py`.
+- [ ] Registrar um alerta ativo (categoria "conexao_github") no `metrics.json` sob a tarefa ativa ou um ID global de monitoramento sempre que a sincronização falhar por esse motivo.
+- [ ] Exibir orientações de resolução humanizadas na CLI explicando passo a passo como corrigir as credenciais no arquivo `.env`.
+- [ ] Limpar o alerta de conexão automaticamente assim que uma sincronização for realizada com sucesso.
+
+**Passos de Execução (Checklist):**
+- [ ] Iniciar a tarefa localmente (mudar status para `[/]` em TASKS.md)
+- [ ] Criar o plano técnico de trabalho no painel de controle
+- [ ] Modificar o script `sync_tasks.py` para capturar e tratar erros de conexão da API
+- [ ] Implementar a gravação e limpeza automática do alerta de conexão no `metrics.json`
+- [ ] Validar a exibição do alerta na CLI forçando um token inválido temporariamente
+- [ ] Concluir a tarefa no arquivo local (status `[x]` em TASKS.md)
+- [ ] Sincronizar as atualizações finais com o painel remoto
+- [ ] Registrar o histórico de entrega em walkthrough.md
+- [ ] Realizar o commit e push final das modificações
+
+**Resultado Esperado:**
+O usuário receberá uma mensagem clara e amigável no console informando que o token ou o número do projeto estão incorretos, em vez de o sistema falhar silenciosamente ou apresentar logs técnicos de erro de conexão.
+
+---
+
 ## ✅ Concluídas
 
 _(nenhuma ainda)_
