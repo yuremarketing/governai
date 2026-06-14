@@ -141,6 +141,27 @@ def check_alerts(task_id, task_data, now):
                     
     return alerts
 
+def dispatch_notifications(task_id, new_status, old_status, new_alerts, added_alerts):
+    reasons = []
+    if new_status == "blocked" and old_status != "blocked":
+        reasons.append("Tarefa transicionou para o estado BLOQUEADO")
+        
+    for alert_key in sorted(added_alerts):
+        reasons.append(new_alerts[alert_key])
+        
+    if not reasons:
+        return
+        
+    message = "; ".join(reasons)
+    
+    import threading
+    try:
+        import notifier
+        t = threading.Thread(target=notifier.send_notifications, args=(task_id, message), daemon=False)
+        t.start()
+    except Exception as e:
+        print(f"[MÉTRICAS] [ERRO] Falha ao despachar notificacoes: {e}")
+
 def update_activity_and_alerts(task_id, task_data, now, old_status, old_alerts_keys):
     new_status = task_data.get("status", "pending")
     new_alerts = check_alerts(task_id, task_data, now)
@@ -170,6 +191,8 @@ def update_activity_and_alerts(task_id, task_data, now, old_status, old_alerts_k
             print(f"   - {new_alerts[k]}")
             
     task_data["active_alerts"] = sorted(list(new_alerts_keys))
+    
+    dispatch_notifications(task_id, new_status, old_status, new_alerts, added_alerts)
 
 def add_pending_task_raw(metrics, task_id):
     if task_id not in metrics:

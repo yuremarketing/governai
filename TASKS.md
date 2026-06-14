@@ -164,7 +164,7 @@ Implementar um mecanismo de recepção de eventos via GitHub Webhooks para dispa
 
 ### TASK-018 — Implementar envio ativo de alertas do GovernAI
 
-**Status:** [ ]
+**Status:** [x]
 **Descrição:**
 Implementar um mecanismo de envio ativo e automatizado de notificações/alertas do GovernAI (por exemplo, via Slack, Discord ou e-mail) quando anomalias críticas forem identificadas pelas métricas (tasks bloqueadas, alta taxa de revisão e tempo excessivo de execução).
 
