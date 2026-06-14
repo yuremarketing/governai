@@ -390,6 +390,46 @@ Garantir que o usuário entenda claramente o que está aprovando antes de intera
 
 ---
 
+### TASK-TEST-UX — Testar fluxo de aprovação com contexto
+
+**Status:** [/]
+**Descrição:**
+Validar se o GovernAI exibe corretamente o bloco de aprovação com contexto antes de solicitar Accept/Reject.
+
+**Critérios de aceite:**
+- O bloco de aprovação deve ser exibido com sucesso no chat.
+- O bloco de aprovação deve ser exibido com sucesso no terminal (stdout).
+- O fallback de descrição deve buscar automaticamente os dados corretos no TASKS.md.
+
+---
+
+### TASK-GOV-011 — Explicar ações antes da aprovação do executor
+
+**Status:** [x]
+**Descrição:**
+Garantir que o usuário entenda claramente o que está sendo enviado ao terminal antes de clicar em Accept, exibindo o contexto e impacto esperados de qualquer envio de input.
+
+**Critérios de aceite:**
+- Nunca exibir "Approve?" sem contexto explicativo detalhado.
+- Sempre vincular a ação à task correspondente.
+- Explicar detalhadamente o impacto esperado da ação.
+- Funcionar perfeitamente no ambiente do agente (chat) e na CLI.
+
+---
+
+### TASK-GOV-012 — Melhorar linguagem das mensagens para usuários leigos
+
+**Status:** [x]
+**Descrição:**
+Tornar a comunicação do GovernAI mais amigável, clara e compreensível para usuários não técnicos, traduzindo termos técnicos e impactos em linguagem simples e acolhedora.
+
+**Critérios de aceite:**
+- Evitar termos técnicos isolados (ex: "input", "in_progress").
+- Traduzir impacto em linguagem simples.
+- Manter clareza e simplicidade em todas as interações.
+
+---
+
 ## ✅ Concluídas
 
 _(nenhuma ainda)_

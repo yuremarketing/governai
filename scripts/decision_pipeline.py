@@ -57,23 +57,23 @@ def print_approval_context(task_id, title=None, summary=None):
         summary = find_task_description(task_id)
         
     print(cli_colors.blue("-" * 50))
-    print(cli_colors.bold(cli_colors.blue("GovernAI — Aprovação necessária")))
+    print(cli_colors.bold(cli_colors.blue("GovernAI — Solicitação de aprovação")))
     print(cli_colors.blue("-" * 50))
     print()
-    print(f"Task: {cli_colors.bold(cli_colors.cyan(task_id))}")
+    print(f"Tarefa: {cli_colors.bold(cli_colors.cyan(task_id))}")
     print(f"Título: {cli_colors.bold(title)}")
     print()
-    print("O que será feito:")
+    print("O que vai acontecer na prática:")
     print(summary)
     print()
-    print(f"📄 {cli_colors.bold('Revise antes de aprovar:')}")
-    print("- Implementation Plan (detalhes técnicos)")
-    print("- Task (checklist de execução)")
-    print("- Walkthrough (se disponível)")
+    print(f"📄 {cli_colors.bold('Revise antes de aprovar (na barra de arquivos à direita):')}")
+    print("- Plano Técnico de Trabalho (detalhes de programação do código)")
+    print("- Checklist de Execução (lista detalhada das tarefas que serão feitas)")
+    print("- Relatório de Resultados (histórico de entregas já feitas)")
     print()
-    print("Após revisar, escolha:")
-    print(f"- {cli_colors.green('Accept')} → executar")
-    print(f"- {cli_colors.yellow('Reject')} → pausar")
+    print("Após ler e revisar, escolha na tela do chat:")
+    print(f"- {cli_colors.green('Aceitar (Accept)')} → Autoriza o assistente a iniciar as alterações")
+    print(f"- {cli_colors.yellow('Rejeitar (Reject)')} → Pausa o andamento para fazermos ajustes antes")
     print()
     print(cli_colors.blue("-" * 50))
 
@@ -107,19 +107,19 @@ def update_local_task_status(task_id, status_tag):
 
 def print_decision_context(task_id, title):
     print(cli_colors.blue("-" * 50))
-    print(cli_colors.bold(cli_colors.blue("GovernAI — Decisão de Execução de Task")))
+    print(cli_colors.bold(cli_colors.blue("GovernAI — Decisão de Execução de Tarefa")))
     print(cli_colors.blue("-" * 50))
-    print(f"Task: {cli_colors.bold(task_id)}")
+    print(f"Código da Tarefa: {cli_colors.bold(task_id)}")
     print(f"Título: {cli_colors.bold(title)}")
     print()
-    print("Ação necessária:")
-    print("Deseja iniciar a execução desta tarefa agora?")
+    print("O que você deseja fazer?")
+    print("Esta tarefa foi detectada pelo sistema. Escolha como prosseguir:")
     print()
-    print("Opções:")
-    print(f"1) {cli_colors.green('Executar tarefa')} (marcar como [/] e iniciar métricas)")
-    print(f"2) {cli_colors.yellow('Apenas registrar no backlog')} (manter como [ ])")
+    print("Opções disponíveis:")
+    print(f"1) {cli_colors.green('Começar a trabalhar nela agora')} (marcar como ativa e iniciar contagem de tempo)")
+    print(f"2) {cli_colors.yellow('Apenas planejar para depois')} (guardar na lista de tarefas pendentes)")
     print()
-    print("(Aguardando decisão do usuário...)")
+    print("(Aguardando sua escolha no teclado...)")
     print(cli_colors.blue("-" * 50))
 
 def ensure_task_decision(task_id):
@@ -152,7 +152,7 @@ def ensure_task_decision(task_id):
     
     # Check if terminal is interactive (TTY)
     if not sys.stdin.isatty():
-        print(cli_colors.yellow(f"[INFO] Ambiente não-interativo detectado. Auto-selecionando Opção 2 (Apenas registrar no backlog) para a tarefa {task_id}."))
+        print(cli_colors.yellow(f"[INFO] Tela não-interativa detectada. Guardando automaticamente a tarefa {task_id} na lista de pendentes para segurança do fluxo."))
         # Explicit decision log in requested format
         print(f"[DECISION] {task_id} → pending (modo não-interativo)")
         update_local_task_status(task_id, "pending")
@@ -162,12 +162,12 @@ def ensure_task_decision(task_id):
     choice = ""
     while choice not in ["1", "2"]:
         try:
-            choice = input(cli_colors.bold("Selecione uma opção (1-2): ")).strip()
+            choice = input(cli_colors.bold("Escolha uma opção (digite 1 ou 2): ")).strip()
             if choice not in ["1", "2"]:
-                print(cli_colors.red("[ERRO] Opção inválida! Escolha apenas 1 ou 2."))
+                print(cli_colors.red("[OPÇÃO INVÁLIDA] Por favor, digite apenas o número 1 ou o número 2 no seu teclado."))
         except (KeyboardInterrupt, EOFError):
             print()
-            print(cli_colors.yellow("[AVISO] Entrada interrompida. Adotando Opção 2 (Apenas registrar no backlog)."))
+            print(cli_colors.yellow("[AVISO] Seleção interrompida. Guardando a tarefa de forma segura na lista de tarefas pendentes."))
             # Explicit decision log in requested format
             print(f"[DECISION] {task_id} → pending (entrada interrompida)")
             update_local_task_status(task_id, "pending")
@@ -177,11 +177,27 @@ def ensure_task_decision(task_id):
         # Explicit decision log in requested format
         print(f"[DECISION] {task_id} → in_progress (input do usuário)")
         update_local_task_status(task_id, "in_progress")
-        print(cli_colors.green(f"[SUCESSO] Status da tarefa {task_id} atualizado para EXECUÇÃO em TASKS.md."))
+        print(cli_colors.green(f"[SUCESSO] Tarefa {task_id} ativada! Iniciamos o trabalho e o registro de progresso."))
         return "in_progress"
     else:
         # Explicit decision log in requested format
         print(f"[DECISION] {task_id} → pending (input do usuário)")
         update_local_task_status(task_id, "pending")
-        print(cli_colors.yellow(f"[INFO] Tarefa {task_id} registrada apenas no BACKLOG/TODO."))
+        print(cli_colors.yellow(f"[INFO] Tarefa {task_id} salva na lista de pendentes para ser realizada no futuro."))
         return "pending"
+
+def print_action_confirmation(task_id, action, input_val, impact):
+    print(cli_colors.blue("-" * 50))
+    print(cli_colors.bold(cli_colors.blue("GovernAI — Confirmação de ação")))
+    print(cli_colors.blue("-" * 50))
+    print()
+    print(f"Tarefa: {cli_colors.bold(cli_colors.cyan(task_id))}")
+    print()
+    print("A ação a seguir será executada no terminal:")
+    print(f"→ {action} (enviando o valor '{input_val}')")
+    print()
+    print("O que vai acontecer na prática:")
+    print(f"→ {impact}")
+    print()
+    print("Deseja autorizar e permitir que o assistente realize essa ação?")
+    print(cli_colors.blue("-" * 50))

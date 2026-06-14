@@ -59,33 +59,60 @@ Isso garante que o board e os relatórios de métricas do sistema estejam sempre
 
 ---
 
-## 📄 Fluxo de Aprovação de Planos (Accept/Reject)
+## 📄 Fluxo de Aprovação de Planos (Aprovação de Trabalho)
 
-Sempre que uma tarefa exigir aprovação do plano de implementação (quando você criar ou atualizar o `implementation_plan.md` com `RequestFeedback: true` em seu metadata):
+Sempre que uma tarefa exigir aprovação do plano de trabalho (quando você criar ou atualizar o `implementation_plan.md` com `RequestFeedback: true` em seu metadata):
 
-1. **Exibição no Chat:** Você **DEVE** incluir um bloco explicativo em sua resposta de texto no chat seguindo o formato exato:
+1. **Exibição no Chat:** Você **DEVE** incluir um bloco explicativo amigável em sua resposta de texto no chat seguindo o formato exato em português simples:
 
 --------------------------------------------------
-GovernAI — Aprovação necessária
+GovernAI — Solicitação de aprovação
 --------------------------------------------------
 
-Task: TASK-XXX
+Tarefa: TASK-XXX
 Título: <nome da task>
 
-O que será feito:
-<resumo claro e explicativo da execução/solução>
+O que vai acontecer na prática:
+<resumo claro e explicativo da execução/solução em linguagem simples e humana>
 
-📄 Revise antes de aprovar:
-- [Implementation Plan](file:///home/mark/.gemini/antigravity/brain/73b43dd8-1296-4a03-a661-36e9fdd90781/implementation_plan.md) (detalhes técnicos)
-- [Task](file:///home/mark/.gemini/antigravity/brain/73b43dd8-1296-4a03-a661-36e9fdd90781/task.md) (checklist de execução)
-- [Walkthrough](file:///home/mark/.gemini/antigravity/brain/73b43dd8-1296-4a03-a661-36e9fdd90781/walkthrough.md) (se disponível)
+📄 Revise antes de aprovar (na barra de arquivos à direita):
+- [Plano Técnico de Trabalho](file:///home/mark/.gemini/antigravity/brain/73b43dd8-1296-4a03-a661-36e9fdd90781/implementation_plan.md) (detalhes técnicos das alterações)
+- [Checklist de Execução](file:///home/mark/.gemini/antigravity/brain/73b43dd8-1296-4a03-a661-36e9fdd90781/task.md) (lista detalhada das tarefas que serão feitas)
+- [Histórico de Entregas](file:///home/mark/.gemini/antigravity/brain/73b43dd8-1296-4a03-a661-36e9fdd90781/walkthrough.md) (tudo o que já foi construído até agora)
 
-Após revisar, escolha:
-- Accept → executar
-- Reject → pausar
+Para responder, escolha na janela da tela:
+- Aceitar (Accept) → Autoriza o assistente a iniciar as alterações
+- Rejeitar (Reject) → Pausa o andamento para fazermos ajustes antes
 
 --------------------------------------------------
 
 2. **Exibição no Terminal (Opcional):** Você pode opcionalmente rodar o comando `./governai approve TASK-XXX "Resumo"` para exibir no stdout (terminal).
-3. **Sem Decisões Cegos:** Nunca solicite um "Accept" sem apresentar este bloco explicativo contextualizado e apontar para os artefatos específicos na aba lateral.
+3. **Sem Decisões Cegos:** Nunca peça para o usuário "Aceitar" sem apresentar este bloco explicativo contextualizado com linguagem acolhedora, apontando para os arquivos correspondentes na aba lateral.
+
+---
+
+## ⚡ Fluxo de Confirmação de Ações do Executor (Ações de Terminal)
+
+Antes de executar qualquer ação interativa de envio de dados ou sinal ao terminal (como enviar respostas para tarefas em background via `manage_task send_input`):
+
+1. **Exibição no Chat:** Você **DEVE** incluir o seguinte bloco explicativo e amigável no chat:
+
+--------------------------------------------------
+GovernAI — Confirmação de ação
+--------------------------------------------------
+
+Tarefa: TASK-XXX
+
+A ação a seguir será executada no terminal:
+→ <explicação simples da ação, ex: Enviar a escolha "1" para iniciar o trabalho>
+
+O que vai acontecer na prática:
+→ <impacto real e compreensível, ex: A tarefa entrará na fase de trabalho ativo e a contagem de tempo começará>
+
+Deseja autorizar e permitir que o assistente realize essa ação?
+
+--------------------------------------------------
+
+2. **Exibição no Terminal (Opcional):** Você pode opcionalmente rodar o comando `./governai confirm TASK-XXX "Ação" "Valor" "Impacto"` para exibir no stdout.
+3. **Comunicação Transparente:** Nunca envie inputs ao terminal de forma invisível ou silenciosa. Mantenha o usuário no controle e ciente do que está sendo enviado.
 

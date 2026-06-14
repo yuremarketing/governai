@@ -24,6 +24,7 @@ def print_help():
     print(f"  {cli_colors.green('block')} {cli_colors.cyan('<task_id>')}    Bloqueia a tarefa e envia alertas")
     print(f"  {cli_colors.green('complete')} {cli_colors.cyan('<task_id>')} Conclui a tarefa e para o cronômetro")
     print(f"  {cli_colors.green('approve')} {cli_colors.cyan('<task_id>')} [resumo] Exibe o contexto de orientação de aprovação")
+    print(f"  {cli_colors.green('confirm')} {cli_colors.cyan('<task_id> <ação> <valor> <impacto>')} Exibe confirmação de ação")
     print(f"  {cli_colors.green('report')}            Exibe o relatório de métricas em Markdown")
     print()
     print(cli_colors.bold("Opções globais:"))
@@ -35,6 +36,7 @@ def print_help():
     print(f"  ./governai block TASK-001")
     print(f"  ./governai complete TASK-001")
     print(f"  ./governai approve TASK-001 \"Refatoração do banco de dados\"")
+    print(f"  ./governai confirm TASK-001 \"Enviar opção\" \"1\" \"Iniciar a execução da tarefa\"")
     print(f"  ./governai report")
     print(cli_colors.bold(cli_colors.blue("==================================================")))
 
@@ -57,7 +59,7 @@ def main():
             print(cli_colors.red(f"[ERRO] Falha durante a execução da sincronização: {e}"), file=sys.stderr)
             sys.exit(1)
             
-    elif cmd in ["start", "block", "complete", "approve"]:
+    elif cmd in ["start", "block", "complete", "approve", "confirm"]:
         if len(sys.argv) < 3:
             print(cli_colors.red(f"[ERRO] O identificador da tarefa (ex: TASK-001) é obrigatório para o comando '{cmd}'."), file=sys.stderr)
             sys.exit(1)
@@ -82,6 +84,15 @@ def main():
                 summary = sys.argv[3] if len(sys.argv) > 3 else None
                 import decision_pipeline
                 decision_pipeline.print_approval_context(task_id, summary=summary)
+            elif cmd == "confirm":
+                if len(sys.argv) < 6:
+                    print(cli_colors.red("[ERRO] Para o comando 'confirm', os argumentos <ação> <valor_do_input> <impacto> são obrigatórios."), file=sys.stderr)
+                    sys.exit(1)
+                action = sys.argv[3]
+                input_val = sys.argv[4]
+                impact = sys.argv[5]
+                import decision_pipeline
+                decision_pipeline.print_action_confirmation(task_id, action, input_val, impact)
         except Exception as e:
             print(cli_colors.red(f"[ERRO] Falha ao executar comando '{cmd}' para a tarefa {task_id}: {e}"), file=sys.stderr)
             sys.exit(1)
