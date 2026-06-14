@@ -8,7 +8,7 @@
 
 ### TASK-001 — Refinar identidade do GovernAI
 
-**Status:** [ ]
+**Status:** [x]
 **Descrição:**
 Detalhar melhor o posicionamento do GovernAI como framework de governança para desenvolvimento com IA, incluindo definição clara de público-alvo e proposta de valor.
 
