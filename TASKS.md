@@ -33,7 +33,7 @@ Mapear os principais cenários onde o GovernAI pode ser utilizado.
 
 ### TASK-003 — Criar template padrão de task
 
-**Status:** [ ]
+**Status:** [x]
 **Descrição:**
 Definir um modelo padrão de task para garantir consistência e facilidade de uso.
 
