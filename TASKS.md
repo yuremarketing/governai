@@ -123,6 +123,19 @@ Adicionar e gerenciar um campo de status interno estruturado no arquivo local `l
 
 ---
 
+### TASK-015 — Sincronizar e garantir consistência de estados entre sistemas
+
+**Status:** [ ]
+**Descrição:**
+Garantir a consistência de estados e conteúdo de todas as tarefas entre o arquivo local `TASKS.md` (definido como fonte única de verdade), o board do GitHub Projects e o arquivo `logs/metrics.json`. Qualquer alteração no `TASKS.md` local deve sincronizar de forma atômica e consistente os estados dos outros dois sistemas.
+
+**Critérios de aceite:**
+- Mapeamento centralizado e unificado de estados entre `TASKS.md` (markdown), GitHub Projects (columns) e `metrics.json` (json).
+- Execução encadeada e atômica onde a atualização do `TASKS.md` dispara a sincronização do GitHub Projects e a atualização correspondente no `metrics.json` sem desvios.
+- Validação automática de integridade que impede estados inconsistentes (Ex: uma tarefa marcada como concluída `[x]` no markdown mas `in_progress` no metrics/board).
+
+---
+
 ---
 
 ## 🟡 Prioridade Média
