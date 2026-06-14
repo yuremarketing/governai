@@ -312,7 +312,7 @@ Criar um cenário simulado mostrando o uso do GovernAI em um projeto real.
 
 ### TASK-005 — Documentar fluxo completo
 
-**Status:** [ ]
+**Status:** [x]
 **Descrição:**
 Explicar detalhadamente todo o ciclo de vida de uma task.
 
