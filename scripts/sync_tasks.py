@@ -43,6 +43,41 @@ def normalize_text(text):
     lines = [line for line in lines if line]
     return "\n".join(lines).strip()
 
+def normalize_status_tag(status_name):
+    if not status_name:
+        return "todo"
+    status_clean = status_name.strip().lower()
+    status_clean = status_clean.replace(" ", "_")
+    if status_clean in ["todo", "a_fazer", "backlog"]:
+        return "todo"
+    if status_clean in ["in_progress", "em_progresso", "doing"]:
+        return "in_progress"
+    if status_clean in ["done", "concluido", "concluída"]:
+        return "done"
+    if status_clean in ["blocked", "bloqueado", "impedimento"]:
+        return "blocked"
+    return status_clean
+
+def parse_sync_tag(body_text):
+    if not body_text:
+        return None
+    match = re.search(r"<!--\s*governai-sync:\s*([\w_]+)\s*-->", body_text)
+    if match:
+        return normalize_status_tag(match.group(1))
+    return None
+
+def should_sync_reverse(task_id, github_status, github_body):
+    normalized_github_status = normalize_status_tag(github_status)
+    tag_status = parse_sync_tag(github_body)
+    
+    if tag_status is None:
+        return True
+        
+    if normalized_github_status == tag_status:
+        return False
+        
+    return True
+
 def parse_tasks():
     if not os.path.exists(TASKS_FILE):
         print(f"[ERRO] Arquivo {TASKS_FILE} não encontrado.")
@@ -83,7 +118,8 @@ def parse_tasks():
         criteria_match = re.search(r"\*\*Critérios de aceite:\*\*(.*)$", section, re.DOTALL)
         criteria = criteria_match.group(1).strip() if criteria_match else ""
         
-        body = f"### Descrição\n{description}\n\n### Critérios de aceite\n{criteria}"
+        status_tag = "done" if is_done else ("in_progress" if is_in_progress else "todo")
+        body = f"### Descrição\n{description}\n\n### Critérios de aceite\n{criteria}\n\n<!-- governai-sync: {status_tag} -->"
         
         tasks.append({
             "id": task_id,

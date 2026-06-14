@@ -99,7 +99,7 @@ Ajustar o script `scripts/metrics.py` para garantir idempotência. Deve evitar a
 
 ### TASK-013 — Implementar mecanismo anti-loop na sincronização
 
-**Status:** [ ]
+**Status:** [x]
 **Descrição:**
 Implementar um mecanismo anti-loop na sincronização bidirecional entre o `TASKS.md` local e o board do GitHub Projects, utilizando uma flag de origem (metadata/tag) para identificar a origem das atualizações e evitar o reprocessamento infinito de eventos gerados pelo próprio sistema.
 
