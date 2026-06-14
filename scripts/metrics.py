@@ -83,53 +83,67 @@ def format_duration(seconds):
     else:
         return f"{s}s"
 
+def add_pending_task_raw(metrics, task_id):
+    if task_id not in metrics:
+        metrics[task_id] = {
+            "status": "pending",
+            "start_time": None,
+            "end_time": None,
+            "duration_seconds": None,
+            "revisions": 0,
+            "blocks": 0,
+            "llm_calls": 0
+        }
+
+def add_pending_task(task_id):
+    with metrics_transaction() as metrics:
+        if task_id in metrics:
+            print(f"[MÉTRICAS] Aviso: Tarefa {task_id} já registrada com status '{metrics[task_id].get('status')}'.")
+            return
+        add_pending_task_raw(metrics, task_id)
+        print(f"[MÉTRICAS] Tarefa {task_id} registrada como pendente.")
+
 def start_task(task_id):
     now_str = datetime.now(timezone.utc).isoformat()
     with metrics_transaction() as metrics:
-        if task_id in metrics:
-            status = metrics[task_id].get("status")
-            if status in ["in_progress", "completed", "done"]:
-                print(f"[MÉTRICAS] Aviso: Tarefa {task_id} já está com status '{status}'. Ignorando inicialização.")
-                return
+        # Auto-cria como pending caso não exista
+        add_pending_task_raw(metrics, task_id)
+        
+        status = metrics[task_id].get("status")
+        if status in ["in_progress"]:
+            print(f"[MÉTRICAS] Aviso: Tarefa {task_id} já está com status 'in_progress'. Ignorando inicialização.")
+            return
+        if status in ["done", "completed"]:
+            print(f"[MÉTRICAS] Aviso: Tarefa {task_id} já está concluída ({status}). Ignorando inicialização.")
+            return
             
-            # Se for pending ou outro estado, iniciamos a tarefa
-            metrics[task_id]["status"] = "in_progress"
-            if not metrics[task_id].get("start_time"):
-                metrics[task_id]["start_time"] = now_str
-            if metrics[task_id].get("llm_calls", 0) == 0:
-                metrics[task_id]["llm_calls"] = 1
-            print(f"[MÉTRICAS] Tarefa {task_id} (preexistente) iniciada em {now_str}.")
-        else:
-            metrics[task_id] = {
-                "status": "in_progress",
-                "start_time": now_str,
-                "end_time": None,
-                "duration_seconds": None,
-                "revisions": 0,
-                "blocks": 0,
-                "llm_calls": 1
-            }
-            print(f"[MÉTRICAS] Tarefa {task_id} iniciada em {now_str}.")
+        metrics[task_id]["status"] = "in_progress"
+        if not metrics[task_id].get("start_time"):
+            metrics[task_id]["start_time"] = now_str
+        if metrics[task_id].get("llm_calls", 0) == 0:
+            metrics[task_id]["llm_calls"] = 1
+            
+        print(f"[MÉTRICAS] Tarefa {task_id} em progresso. Início/Retomada: {now_str}.")
 
 def increment_metric(task_id, metric_name):
     with metrics_transaction() as metrics:
-        if task_id not in metrics:
-            # Se não existe, inicializa localmente sem aninhar transações
-            now_str = datetime.now(timezone.utc).isoformat()
-            metrics[task_id] = {
-                "status": "in_progress",
-                "start_time": now_str,
-                "end_time": None,
-                "duration_seconds": None,
-                "revisions": 0,
-                "blocks": 0,
-                "llm_calls": 1
-            }
+        # Auto-cria como pending caso não exista
+        add_pending_task_raw(metrics, task_id)
         
         metrics[task_id][metric_name] = metrics[task_id].get(metric_name, 0) + 1
         if metric_name != "llm_calls":
             metrics[task_id]["llm_calls"] = metrics[task_id].get("llm_calls", 0) + 1
             
+        if metric_name == "blocks":
+            metrics[task_id]["status"] = "blocked"
+            print(f"[MÉTRICAS] Tarefa {task_id} BLOQUEADA. Total de bloqueios: {metrics[task_id]['blocks']}.")
+        else:
+            if metrics[task_id].get("status") == "pending":
+                now_str = datetime.now(timezone.utc).isoformat()
+                metrics[task_id]["status"] = "in_progress"
+                metrics[task_id]["start_time"] = now_str
+                print(f"[MÉTRICAS] Tarefa {task_id} iniciada implicitamente (trabalho ativo) em {now_str}.")
+                
         print(f"[MÉTRICAS] Tarefa {task_id} atualizada: {metric_name} = {metrics[task_id][metric_name]}.")
 
 def complete_task(task_id):
@@ -137,12 +151,11 @@ def complete_task(task_id):
     now_str = now.isoformat()
     
     with metrics_transaction() as metrics:
-        if task_id not in metrics:
-            print(f"[MÉTRICAS] Erro: Tarefa {task_id} não está registrada. Inicie-a primeiro.")
-            return
-            
+        # Auto-cria como pending caso não exista
+        add_pending_task_raw(metrics, task_id)
+        
         status = metrics[task_id].get("status")
-        if status in ["completed", "done"]:
+        if status in ["done", "completed"]:
             print(f"[MÉTRICAS] Aviso: Tarefa {task_id} já está concluída ({status}). Ignorando conclusão.")
             return
             
@@ -157,7 +170,7 @@ def complete_task(task_id):
         except Exception as e:
             duration = 0
             
-        metrics[task_id]["status"] = "completed"
+        metrics[task_id]["status"] = "done"
         metrics[task_id]["end_time"] = now_str
         metrics[task_id]["duration_seconds"] = int(duration)
         metrics[task_id]["llm_calls"] = metrics[task_id].get("llm_calls", 0) + 1
@@ -175,12 +188,27 @@ def report_metrics():
     print("| :--- | :--- | :--- | :--- | :--- | :--- | :--- |")
     
     for task_id, data in sorted(metrics.items()):
-        status = "✅ Concluída" if data["status"] == "completed" else "🚧 Em Progresso"
-        start_t = data["start_time"].split("T")[0] + " " + data["start_time"].split("T")[1][:8]
-        duration = format_duration(data["duration_seconds"])
-        revisions = data["revisions"]
-        blocks = data["blocks"]
-        llm_calls = data["llm_calls"]
+        status_raw = data.get("status", "in_progress")
+        if status_raw in ["done", "completed"]:
+            status = "✅ Concluída"
+        elif status_raw == "blocked":
+            status = "❌ Bloqueada"
+        elif status_raw == "pending":
+            status = "⏳ Pendente"
+        else:
+            status = "🚧 Em Progresso"
+            
+        start_t = "-"
+        if data.get("start_time"):
+            try:
+                start_t = data["start_time"].split("T")[0] + " " + data["start_time"].split("T")[1][:8]
+            except:
+                start_t = "-"
+                
+        duration = format_duration(data.get("duration_seconds"))
+        revisions = data.get("revisions", 0)
+        blocks = data.get("blocks", 0)
+        llm_calls = data.get("llm_calls", 0)
         
         print(f"| {task_id} | {status} | {start_t} | {duration} | {revisions} | {blocks} | {llm_calls} |")
     print()
@@ -188,11 +216,12 @@ def report_metrics():
 def print_usage():
     print("Uso: python3 scripts/metrics.py <comando> <task_id>")
     print("Comandos:")
-    print("  start <task_id>    : Inicia o cronômetro da task")
+    print("  pending <task_id>  : Registra a task no backlog local (status pending)")
+    print("  start <task_id>    : Inicia o cronômetro da task (status in_progress)")
     print("  revision <task_id> : Incrementa contador de revisões (commits)")
-    print("  block <task_id>    : Incrementa contador de bloqueios")
+    print("  block <task_id>    : Incrementa bloqueios e define status para blocked")
     print("  step <task_id>     : Incrementa contador de passos (LLM calls)")
-    print("  complete <task_id> : Finaliza o cronômetro e conclui a task")
+    print("  complete <task_id> : Finaliza o cronômetro e conclui a task (status done)")
     print("  report             : Exibe o relatório de métricas em Markdown")
 
 def main():
@@ -213,7 +242,9 @@ def main():
         
     task_id = sys.argv[2].upper()
     
-    if cmd == "start":
+    if cmd in ["pending", "add"]:
+        add_pending_task(task_id)
+    elif cmd == "start":
         start_task(task_id)
     elif cmd == "revision":
         increment_metric(task_id, "revisions")
