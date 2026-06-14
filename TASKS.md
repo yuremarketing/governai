@@ -151,7 +151,7 @@ Implementar um sistema de alertas no GovernAI para identificar tasks travadas, e
 
 ### TASK-017 — Implementar integração via GitHub Webhooks
 
-**Status:** [ ]
+**Status:** [x]
 **Descrição:**
 Implementar um mecanismo de recepção de eventos via GitHub Webhooks para disparar automaticamente as ações e sincronizações do GovernAI quando houver movimentações ou alterações nos cards do board do GitHub Projects.
 
