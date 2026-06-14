@@ -175,6 +175,20 @@ Implementar um mecanismo de envio ativo e automatizado de notificações/alertas
 
 ---
 
+### TASK-019 — Aplicar hardening no sistema de notificações
+
+**Status:** [ ]
+**Descrição:**
+Aplicar hardening e aumentar a robustez do sistema de notificações ativas (notifier), incluindo a configuração explícita de timeout HTTP, tratamento estruturado de exceções em todas as chamadas de rede, padronização estruturada de payloads e logging detalhado de envio de alertas.
+
+**Critérios de aceite:**
+- Timeout HTTP explícito configurado em todas as chamadas de rede/urllib (ex: 5 segundos).
+- Tratamento de exceções (try/except) em todos os adaptadores (Slack, Discord, SMTP) para evitar que falhas individuais abortem a execução do worker.
+- Padronização de payloads utilizando um modelo de dados comum ou função geradora.
+- Registro detalhado de envio (sucesso, falha, timeout) em arquivo de log específico (ex: `logs/notifications.log`) ou saída padrão com timestamp.
+
+---
+
 ## 🟡 Prioridade Média
 
 ### TASK-004 — Criar exemplo prático de uso
