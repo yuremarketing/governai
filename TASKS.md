@@ -375,6 +375,21 @@ Garantir que o script `webhook_receiver.py` falhe de forma segura na inicializa�
 
 ---
 
+### TASK-GOV-009 — Melhorar UX de aprovação (explicar artifacts antes do Accept)
+
+**Status:** [x]
+**Descrição:**
+Garantir que o usuário entenda claramente o que está aprovando antes de interagir com botões de Accept/Reject, exibindo de forma explícita o contexto da task, impacto esperado e onde revisar os artefatos no console (stdout) e chat do agente.
+
+**Critérios de aceite:**
+- Sempre que uma task exigir aprovação, exibir contexto no stdout/chat antes do Accept.
+- Nunca solicitar Accept sem esse bloco explicativo.
+- Sempre indicar explicitamente a aba/artifact correto.
+- Se o resumo (summary) não for fornecido, buscar automaticamente a descrição no TASKS.md (sem exibir conteúdo genérico).
+- Manter compatibilidade com CLI, ambiente de agente e stdout (terminal).
+
+---
+
 ## ✅ Concluídas
 
 _(nenhuma ainda)_

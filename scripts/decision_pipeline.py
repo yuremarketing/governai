@@ -27,6 +27,56 @@ def find_task_title(task_id):
         
     return "Título não encontrado"
 
+def find_task_description(task_id):
+    tasks_file = os.path.join(BASE_DIR, "TASKS.md")
+    if not os.path.exists(tasks_file):
+        return "Descrição não encontrada (TASKS.md inexistente)"
+        
+    try:
+        with open(tasks_file, "r", encoding="utf-8") as f:
+            content = f.read()
+            
+        sections = content.split("---")
+        header_re = re.compile(rf"###\s+{re.escape(task_id)}")
+        
+        for section in sections:
+            section = section.strip()
+            if header_re.search(section):
+                desc_match = re.search(r"\*\*Descrição:\*\*(.*?)(?=\*\*Critérios de aceite:\*\*|$)", section, re.DOTALL)
+                if desc_match:
+                    return desc_match.group(1).strip()
+    except Exception:
+        pass
+        
+    return "Descrição não encontrada no TASKS.md"
+
+def print_approval_context(task_id, title=None, summary=None):
+    if not title:
+        title = find_task_title(task_id)
+    if not summary:
+        summary = find_task_description(task_id)
+        
+    print(cli_colors.blue("-" * 50))
+    print(cli_colors.bold(cli_colors.blue("GovernAI — Aprovação necessária")))
+    print(cli_colors.blue("-" * 50))
+    print()
+    print(f"Task: {cli_colors.bold(cli_colors.cyan(task_id))}")
+    print(f"Título: {cli_colors.bold(title)}")
+    print()
+    print("O que será feito:")
+    print(summary)
+    print()
+    print(f"📄 {cli_colors.bold('Revise antes de aprovar:')}")
+    print("- Implementation Plan (detalhes técnicos)")
+    print("- Task (checklist de execução)")
+    print("- Walkthrough (se disponível)")
+    print()
+    print("Após revisar, escolha:")
+    print(f"- {cli_colors.green('Accept')} → executar")
+    print(f"- {cli_colors.yellow('Reject')} → pausar")
+    print()
+    print(cli_colors.blue("-" * 50))
+
 def update_local_task_status(task_id, status_tag):
     status_char = "/" if status_tag == "in_progress" else ("x" if status_tag == "done" else " ")
     tasks_file = os.path.join(BASE_DIR, "TASKS.md")

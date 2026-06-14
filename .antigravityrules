@@ -56,3 +56,36 @@ Isso garante que o board e os relatórios de métricas do sistema estejam sempre
 
 - **Credenciais Seguras:** Nunca comite ou envie arquivos contendo credenciais (como o `.env`). O `.gitignore` deve estar sempre atualizado e ativo.
 - **Mensagens de Commit:** Commits devem ser descritivos e seguir o padrão `feat: <desc>` ou `fix: <desc>`.
+
+---
+
+## 📄 Fluxo de Aprovação de Planos (Accept/Reject)
+
+Sempre que uma tarefa exigir aprovação do plano de implementação (quando você criar ou atualizar o `implementation_plan.md` com `RequestFeedback: true` em seu metadata):
+
+1. **Exibição no Chat:** Você **DEVE** incluir um bloco explicativo em sua resposta de texto no chat seguindo o formato exato:
+
+--------------------------------------------------
+GovernAI — Aprovação necessária
+--------------------------------------------------
+
+Task: TASK-XXX
+Título: <nome da task>
+
+O que será feito:
+<resumo claro e explicativo da execução/solução>
+
+📄 Revise antes de aprovar:
+- [Implementation Plan](file:///home/mark/.gemini/antigravity/brain/73b43dd8-1296-4a03-a661-36e9fdd90781/implementation_plan.md) (detalhes técnicos)
+- [Task](file:///home/mark/.gemini/antigravity/brain/73b43dd8-1296-4a03-a661-36e9fdd90781/task.md) (checklist de execução)
+- [Walkthrough](file:///home/mark/.gemini/antigravity/brain/73b43dd8-1296-4a03-a661-36e9fdd90781/walkthrough.md) (se disponível)
+
+Após revisar, escolha:
+- Accept → executar
+- Reject → pausar
+
+--------------------------------------------------
+
+2. **Exibição no Terminal (Opcional):** Você pode opcionalmente rodar o comando `./governai approve TASK-XXX "Resumo"` para exibir no stdout (terminal).
+3. **Sem Decisões Cegos:** Nunca solicite um "Accept" sem apresentar este bloco explicativo contextualizado e apontar para os artefatos específicos na aba lateral.
+

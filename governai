@@ -23,6 +23,7 @@ def print_help():
     print(f"  {cli_colors.green('start')} {cli_colors.cyan('<task_id>')}    Inicia o cronômetro da tarefa")
     print(f"  {cli_colors.green('block')} {cli_colors.cyan('<task_id>')}    Bloqueia a tarefa e envia alertas")
     print(f"  {cli_colors.green('complete')} {cli_colors.cyan('<task_id>')} Conclui a tarefa e para o cronômetro")
+    print(f"  {cli_colors.green('approve')} {cli_colors.cyan('<task_id>')} [resumo] Exibe o contexto de orientação de aprovação")
     print(f"  {cli_colors.green('report')}            Exibe o relatório de métricas em Markdown")
     print()
     print(cli_colors.bold("Opções globais:"))
@@ -33,6 +34,7 @@ def print_help():
     print(f"  ./governai start TASK-001")
     print(f"  ./governai block TASK-001")
     print(f"  ./governai complete TASK-001")
+    print(f"  ./governai approve TASK-001 \"Refatoração do banco de dados\"")
     print(f"  ./governai report")
     print(cli_colors.bold(cli_colors.blue("==================================================")))
 
@@ -55,7 +57,7 @@ def main():
             print(cli_colors.red(f"[ERRO] Falha durante a execução da sincronização: {e}"), file=sys.stderr)
             sys.exit(1)
             
-    elif cmd in ["start", "block", "complete"]:
+    elif cmd in ["start", "block", "complete", "approve"]:
         if len(sys.argv) < 3:
             print(cli_colors.red(f"[ERRO] O identificador da tarefa (ex: TASK-001) é obrigatório para o comando '{cmd}'."), file=sys.stderr)
             sys.exit(1)
@@ -67,13 +69,19 @@ def main():
             sys.exit(1)
             
         try:
-            import metrics
             if cmd == "start":
+                import metrics
                 metrics.start_task(task_id)
             elif cmd == "block":
+                import metrics
                 metrics.increment_metric(task_id, "blocks")
             elif cmd == "complete":
+                import metrics
                 metrics.complete_task(task_id)
+            elif cmd == "approve":
+                summary = sys.argv[3] if len(sys.argv) > 3 else None
+                import decision_pipeline
+                decision_pipeline.print_approval_context(task_id, summary=summary)
         except Exception as e:
             print(cli_colors.red(f"[ERRO] Falha ao executar comando '{cmd}' para a tarefa {task_id}: {e}"), file=sys.stderr)
             sys.exit(1)
