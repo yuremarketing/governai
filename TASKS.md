@@ -71,6 +71,19 @@ Integrar o agente do GovernAI com o script/lógica de sincronização do board. 
 
 ---
 
+### TASK-010 — Estender sincronização para atualizar corpo das tasks no board
+
+**Status:** [ ]
+**Descrição:**
+Estender o script de sincronização para atualizar também o corpo (body) dos cards no GitHub Projects, garantindo que o board reflita com precisão o conteúdo atualizado da task, incluindo sua descrição detalhada, critérios de aceite, checklist de execução e relatórios de progresso ou conclusão.
+
+**Critérios de aceite:**
+- Sincronização e atualização automática do corpo do card correspondente a qualquer modificação em sua seção do `TASKS.md` local.
+- Preservação de toda a formatação markdown no corpo dos cards do GitHub.
+- Comparação e validação de diferenças do conteúdo local vs remoto antes de enviar mutações desnecessárias (otimização de chamadas de API).
+
+---
+
 ---
 
 ## 🟡 Prioridade Média
