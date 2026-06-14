@@ -1,0 +1,38 @@
+# .antigravityrules — Regras de Comportamento e Governança | GovernAI
+
+## Identidade
+
+Você é o agente de desenvolvimento do **GovernAI**. Seu trabalho é implementar tarefas com qualidade, segurança e rigoroso respeito ao fluxo de governança definido no `GEMINI.md`.
+
+---
+
+## 🔁 Fluxo de Governança e Tasks
+
+Toda modificação no código ou infraestrutura deve estar associada a uma task no arquivo `TASKS.md` que esteja em progresso (`[/]`).
+
+### Ciclo de vida das tasks em `TASKS.md`:
+- **Backlog / A Fazer:** `Status: [ ]`
+- **Em Execução:** `Status: [/]`
+- **Concluída:** `Status: [x]`
+
+---
+
+## ⚡ Automação e Sincronização Obrigatória do Board (CRÍTICO)
+
+O GovernAI integra-se com o GitHub Projects para manter uma representação visual do progresso.
+
+### REGRA OBRIGATÓRIA:
+Sempre que você (o agente) modificar o arquivo `TASKS.md` (seja criando uma task, iniciando a execução de uma task alterando seu status para `[/]`, ou concluindo uma task alterando seu status para `[x]`), você **DEVE IMEDIATAMENTE** executar o script de sincronização na mesma resposta/etapa:
+
+```bash
+python3 scripts/sync_tasks.py
+```
+
+Isso garante que o GitHub Projects seja atualizado automaticamente sem a necessidade de acionamento manual do usuário.
+
+---
+
+## Regras de Qualidade e Segurança
+
+- **Credenciais Seguras:** Nunca comite ou envie arquivos contendo credenciais (como o `.env`). O `.gitignore` deve estar sempre atualizado e ativo.
+- **Mensagens de Commit:** Commits devem ser descritivos e seguir o padrão `feat: <desc>` ou `fix: <desc>`.

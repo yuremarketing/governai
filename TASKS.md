@@ -58,7 +58,7 @@ Especificar e estruturar a camada de decisão do GovernAI que classifica automat
 
 ### TASK-009 — Integrar agente com script de sincronização do board
 
-**Status:** [ ]
+**Status:** [/]
 **Descrição:**
 Integrar o agente do GovernAI com o script/lógica de sincronização do board. O agente deve atualizar automaticamente o GitHub Projects durante as transições de status das tasks (criação no Backlog, início em In Progress, revisão em In Review, bloqueio em Blocked e conclusão em Done) sem a necessidade de acionamento manual externo.
 
