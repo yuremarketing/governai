@@ -114,7 +114,7 @@ Explicar detalhadamente todo o ciclo de vida de uma task.
 
 ### TASK-011 — Implementar coleta de métricas do sistema GovernAI
 
-**Status:** [ ]
+**Status:** [x]
 **Descrição:**
 Implementar um mecanismo de coleta de métricas para o GovernAI que registre o tempo total de execução de tasks, o número de revisões efetuadas, a quantidade de bloqueios encontrados e o volume/custo de uso de LLM (tokens consumidos).
 

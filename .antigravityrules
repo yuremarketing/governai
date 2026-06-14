@@ -17,18 +17,38 @@ Toda modificação no código ou infraestrutura deve estar associada a uma task 
 
 ---
 
-## ⚡ Automação e Sincronização Obrigatória do Board (CRÍTICO)
+## ⚡ Automação, Métricas e Sincronização Obrigatória do Board (CRÍTICO)
 
-O GovernAI integra-se com o GitHub Projects para manter uma representação visual do progresso.
+O GovernAI integra-se com o GitHub Projects e com o sistema de coleta de métricas local.
 
-### REGRA OBRIGATÓRIA:
-Sempre que você (o agente) modificar o arquivo `TASKS.md` (seja criando uma task, iniciando a execução de uma task alterando seu status para `[/]`, ou concluindo uma task alterando seu status para `[x]`), você **DEVE IMEDIATAMENTE** executar o script de sincronização na mesma resposta/etapa:
+### REGRAS OBRIGATÓRIAS DE EXECUÇÃO:
 
-```bash
-python3 scripts/sync_tasks.py
-```
+1. **Sincronização do Board:**
+   Sempre que você modificar o arquivo `TASKS.md`, você **DEVE IMEDIATAMENTE** rodar o script de sincronização na mesma resposta/etapa:
+   ```bash
+   python3 scripts/sync_tasks.py
+   ```
 
-Isso garante que o GitHub Projects seja atualizado automaticamente sem a necessidade de acionamento manual do usuário.
+2. **Registro de Métricas (MÉTRICAS):**
+   Você deve registrar o andamento e a performance da execução das tarefas no arquivo local executando os seguintes comandos:
+   - **Ao iniciar a tarefa `TASK-XXX` (mudar status para `[/]`):**
+     ```bash
+     python3 scripts/metrics.py start TASK-XXX
+     ```
+   - **Ao comitar revisões intermediárias de código:**
+     ```bash
+     python3 scripts/metrics.py revision TASK-XXX
+     ```
+   - **Ao encontrar um impedimento ou bloqueio:**
+     ```bash
+     python3 scripts/metrics.py block TASK-XXX
+     ```
+   - **Ao concluir e entregar a tarefa (mudar status para `[x]`):**
+     ```bash
+     python3 scripts/metrics.py complete TASK-XXX
+     ```
+
+Isso garante que o board e os relatórios de métricas do sistema estejam sempre atualizados automaticamente.
 
 ---
 
