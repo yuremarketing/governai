@@ -529,6 +529,41 @@ O agente poderá disparar comandos de sincronização, início e conclusão de t
 
 ---
 
+### TASK-GOV-016 — Controlar requisições e migrar Webhook Receiver do Vercel
+
+**Status:** [ ]
+
+**Objetivo:**
+Resolver o excesso de requisições recebidas pelo Vercel que pode gerar cobranças inesperadas, investigando a causa raiz e implementando uma solução de rate limiting ou migração do serviço.
+
+**Descrição:**
+O webhook receiver atualmente hospedado no Vercel está recebendo um volume anormal de requisições, possivelmente causado por loops de sincronização entre o GovernAI e o GitHub Projects. Isso pode gerar custos inesperados na plataforma Vercel. Esta task investiga a causa, implementa proteções de rate limiting e avalia a migração do receiver para uma plataforma mais adequada a serviços persistentes (Railway, Render ou Fly.io).
+
+**Critérios de Aceite:**
+- [ ] Analisar logs do Vercel para identificar volume, origem e padrão das requisições excessivas.
+- [ ] Verificar se o loop de webhook (GovernAI → GitHub → webhook → GovernAI) está causando o problema.
+- [ ] Implementar rate limiting no `webhook_receiver.py` (ex: ignorar eventos repetidos do mesmo tipo em menos de 30 segundos).
+- [ ] Avaliar e documentar alternativas ao Vercel para hospedar o receiver (Railway, Render, Fly.io).
+- [ ] Caso necessário, migrar o `webhook_receiver.py` para plataforma gratuita e persistente.
+- [ ] Garantir que a migração não interrompa o fluxo de sincronização com o GitHub Projects.
+- [ ] Notificar o responsável pelo repositório (Gustavo) sobre a solução implementada.
+
+**Passos de Execução (Checklist):**
+- [ ] Iniciar a tarefa localmente (mudar status para `[/]` em TASKS.md)
+- [ ] Criar o plano técnico de trabalho no painel de controle
+- [ ] Coletar e analisar logs do Vercel com o Gustavo
+- [ ] Implementar rate limiting no webhook_receiver.py
+- [ ] Avaliar e executar migração de plataforma se necessário
+- [ ] Concluir a tarefa no arquivo local (status `[x]` em TASKS.md)
+- [ ] Sincronizar as atualizações finais com o painel remoto
+- [ ] Registrar histórico de entrega em walkthrough.md
+- [ ] Realizar o commit e push final para o repositório remoto
+
+**Resultado Esperado:**
+O Vercel deixará de receber requisições excessivas, eliminando o risco de cobranças. O webhook receiver funcionará de forma estável, segura e sem custos inesperados.
+
+---
+
 ## ✅ Concluídas
 
 _(nenhuma ainda)_
