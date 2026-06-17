@@ -4,9 +4,75 @@ import re
 import json
 import cli_colors
 from governance_loader import load_governance_rules
+import audit_logger
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.dirname(SCRIPT_DIR)
+
+
+# ---------------------------------------------------------------------------
+# Dados sensíveis — integração com sensitive_data.py
+# ---------------------------------------------------------------------------
+
+def _sensitive_mode():
+    """Lê o modo de operação do scanner: 'warn' | 'block' | 'mask'."""
+    try:
+        config_file = os.path.join(BASE_DIR, "governai.config.json")
+        with open(config_file, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        cfg = config.get("sensitive_data", {})
+        if not cfg.get("enabled", True):
+            return None  # desativado
+        return cfg.get("mode", "warn")
+    except Exception:
+        return "warn"  # fail-safe: sempre alertar
+
+
+def _check_sensitive_content(text, context="descrição da tarefa"):
+    """
+    Executa scan() no texto e exibe alerta se houver dados sensíveis.
+
+    Retorna:
+        (safe: bool, display_text: str)
+        - safe=False + display_text=None  → modo block: não exibir
+        - safe=False + display_text=str   → modo warn/mask: exibir texto mascarado
+        - safe=True  + display_text=str   → sem achados: exibir texto original
+    """
+    mode = _sensitive_mode()
+    if mode is None:
+        return True, text  # RBAC desativado
+
+    try:
+        from sensitive_data import scan, mask
+    except Exception:
+        return True, text  # fail-soft: exibe sem scan
+
+    findings = scan(text)
+    if not findings:
+        return True, text
+
+    # Exibe alerta detalhado
+    print()
+    print(cli_colors.yellow("⚠️  " + "-" * 48))
+    print(cli_colors.bold(cli_colors.yellow("  GovernAI — Dado Sensível Detectado")))
+    print(cli_colors.yellow("  Contexto: " + context))
+    print(cli_colors.yellow("-" * 50))
+    for f in findings:
+        print(cli_colors.yellow(f"  Tipo:    {f['type']}"))
+        print(cli_colors.yellow(f"  Trecho:  {f['masked_preview']}"))
+        print()
+
+    if mode == "block":
+        print(cli_colors.red("  Ação:    Conteúdo bloqueado. Remova o dado sensível antes de prosseguir."))
+        print(cli_colors.yellow("-" * 50))
+        print()
+        return False, None
+
+    # warn ou mask: exibe mascarado
+    print(cli_colors.yellow("  Ação:    Conteúdo exibido com dados mascarados."))
+    print(cli_colors.yellow("-" * 50))
+    print()
+    return False, mask(text)
 
 def find_task_title(task_id):
     tasks_file = os.path.join(BASE_DIR, "TASKS.md")
@@ -50,12 +116,27 @@ def find_task_description(task_id):
         
     return "Descrição não encontrada no TASKS.md"
 
-def print_approval_context(task_id, title=None, summary=None):
+def print_approval_context(task_id, title=None, summary=None, user_id="solo", user_role="admin"):
     if not title:
         title = find_task_title(task_id)
     if not summary:
         summary = find_task_description(task_id)
-        
+
+    # Verifica dados sensíveis na descrição antes de exibir
+    safe, display_summary = _check_sensitive_content(
+        summary, context=f"descrição da tarefa {task_id}"
+    )
+    if not safe and display_summary is None:
+        # Modo block: não exibir conteúdo — aborta a aprovação
+        audit_logger.log_action(
+            user_id, user_role, "approve", task_id, False,
+            "Aprovação bloqueada: dado sensível detectado na descrição da tarefa"
+        )
+        return
+    # warn/mask: exibe a versão mascarada
+    if display_summary is not None:
+        summary = display_summary
+
     print(cli_colors.blue("-" * 50))
     print(cli_colors.bold(cli_colors.blue("GovernAI — Solicitação de aprovação")))
     print(cli_colors.blue("-" * 50))
@@ -122,7 +203,7 @@ def print_decision_context(task_id, title):
     print("(Aguardando sua escolha no teclado...)")
     print(cli_colors.blue("-" * 50))
 
-def ensure_task_decision(task_id):
+def ensure_task_decision(task_id, user_id="solo", user_role="admin"):
     # Load existing metrics database to check if already registered
     metrics_file = os.path.join(BASE_DIR, "logs", "metrics.json")
     metrics_data = {}
@@ -156,6 +237,7 @@ def ensure_task_decision(task_id):
         # Explicit decision log in requested format
         print(f"[DECISION] {task_id} → pending (modo não-interativo)")
         update_local_task_status(task_id, "pending")
+        audit_logger.log_action(user_id, user_role, "start", task_id, False, "Modo não-interativo: tarefa mantida como pendente")
         return "pending"
         
     # Interactive prompt with validation
@@ -171,6 +253,7 @@ def ensure_task_decision(task_id):
             # Explicit decision log in requested format
             print(f"[DECISION] {task_id} → pending (entrada interrompida)")
             update_local_task_status(task_id, "pending")
+            audit_logger.log_action(user_id, user_role, "start", task_id, False, "Entrada interrompida: tarefa mantida como pendente")
             return "pending"
             
     if choice == "1":
@@ -178,12 +261,14 @@ def ensure_task_decision(task_id):
         print(f"[DECISION] {task_id} → in_progress (input do usuário)")
         update_local_task_status(task_id, "in_progress")
         print(cli_colors.green(f"[SUCESSO] Tarefa {task_id} ativada! Iniciamos o trabalho e o registro de progresso."))
+        audit_logger.log_action(user_id, user_role, "start", task_id, True, "Tarefa ativada via decisão interativa")
         return "in_progress"
     else:
         # Explicit decision log in requested format
         print(f"[DECISION] {task_id} → pending (input do usuário)")
         update_local_task_status(task_id, "pending")
         print(cli_colors.yellow(f"[INFO] Tarefa {task_id} salva na lista de pendentes para ser realizada no futuro."))
+        audit_logger.log_action(user_id, user_role, "start", task_id, False, "Usuário optou por manter como pendente")
         return "pending"
 
 def print_action_confirmation(task_id, action, input_val, impact):

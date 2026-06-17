@@ -6,5 +6,15 @@
       "Executar tarefa",
       "Apenas registrar no backlog/kanban"
     ]
+  },
+  "rbac": {
+    "_note": "Com enabled=false o sistema opera em modo solo (usuário único com acesso total). Para ativar RBAC em time, defina enabled=true e configure users.json com os usuários e papéis.",
+    "enabled": false,
+    "default_role": "admin"
+  },
+  "sensitive_data": {
+    "_note": "Modos: 'warn' (alerta, não bloqueia) | 'mask' (mascara silenciosamente) | 'block' (bloqueia a ação). Desative com enabled=false apenas em ambientes totalmente controlados.",
+    "enabled": true,
+    "mode": "warn"
   }
 }

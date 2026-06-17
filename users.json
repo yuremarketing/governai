@@ -1,0 +1,25 @@
+{
+  "_comment": "Usuários do GovernAI. Defina GOVERNAI_USER_ID no ambiente para selecionar o usuário ativo. Este arquivo só é lido quando rbac.enabled=true em governai.config.json.",
+  "users": [
+    {
+      "id": "admin_01",
+      "name": "Administrador",
+      "role": "admin"
+    },
+    {
+      "id": "reviewer_01",
+      "name": "Revisor",
+      "role": "reviewer"
+    },
+    {
+      "id": "dev_01",
+      "name": "Desenvolvedor",
+      "role": "developer"
+    },
+    {
+      "id": "viewer_01",
+      "name": "Observador",
+      "role": "viewer"
+    }
+  ]
+}

@@ -58,3 +58,101 @@ Explore nossos guias e templates para entender o GovernAI em detalhes:
 * 🛠️ [Exemplo Prático](file:///home/mark/Dev/governai/docs/exemplo_pratico.md): História simulada passo a passo de um projeto com o GovernAI.
 * 🔁 [Guia de Fluxo Completo](file:///home/mark/Dev/governai/docs/fluxo_completo.md): Detalhamento técnico de ponta a ponta do ciclo de vida das tarefas.
 * 📋 [Template de Task](file:///home/mark/Dev/governai/docs/task_template.md): Modelo padrão e limpo para preenchimento de novas tarefas.
+
+---
+
+## 🔐 Controle de Acesso (RBAC)
+
+O GovernAI implementa um sistema de **Role-Based Access Control (RBAC)** que permite restringir quem pode executar cada ação, garantindo governança organizacional em times.
+
+> **Por padrão o RBAC está desativado.** Para uso solo (único usuário), nenhuma configuração é necessária — o comportamento atual é preservado.
+
+### Papéis e Permissões
+
+| Papel | Label | Ações Permitidas |
+|---|---|---|
+| `admin` | Administrador | start, approve, complete, block, sync, confirm, report |
+| `reviewer` | Revisor | approve, report, sync |
+| `developer` | Desenvolvedor | start, complete, block, report, sync, confirm |
+| `viewer` | Observador | report |
+
+### Como ativar o RBAC
+
+**1. Ative no `governai.config.json`:**
+```json
+{
+  "rbac": {
+    "enabled": true,
+    "default_role": "developer"
+  }
+}
+```
+
+**2. Configure os usuários em `users.json`:**
+```json
+{
+  "users": [
+    { "id": "joao", "name": "João Silva", "role": "admin" },
+    { "id": "maria", "name": "Maria Souza", "role": "reviewer" },
+    { "id": "carlos", "name": "Carlos Dev", "role": "developer" }
+  ]
+}
+```
+
+**3. Identifique o usuário ativo via variável de ambiente:**
+```bash
+# Usuário específico
+GOVERNAI_USER_ID=joao ./governai approve TASK-GOV-001
+
+# Automaticamente usa $USER do sistema (se cadastrado em users.json)
+./governai start TASK-GOV-001
+
+# Para CI/CD pipelines
+GOVERNAI_USER_ID=system_ci ./governai sync
+```
+
+### Resolução do Usuário Ativo
+
+O GovernAI resolve a identidade do usuário em ordem de prioridade:
+
+1. **`GOVERNAI_USER_ID`** (variável de ambiente) — prioridade máxima
+2. **`$USER` / `$USERNAME`** do sistema operacional — se o valor coincidir com um `id` em `users.json`
+3. **`default_role`** do `governai.config.json` — fallback final
+
+> ⚠️ **Limitação v1:** O RBAC implementa *autorização*, não *autenticação*. Qualquer processo pode definir `GOVERNAI_USER_ID` livremente. Autenticação real (login, SSO) está planejada para versões futuras.
+
+### Mensagem de Acesso Negado
+
+Quando uma ação é bloqueada, o usuário vê:
+```
+====================================================
+  GovernAI — Acesso Negado
+====================================================
+  Você não tem permissão para aprovar plano.
+  Seu papel atual: Desenvolvedor (carlos)
+  Papéis autorizados: Administrador, Revisor
+  → Solicite a um usuário com papel 'admin' que execute esta ação.
+====================================================
+```
+
+### Audit Log
+
+Toda ação executada (permitida ou bloqueada) é registrada em `logs/audit.log` em formato JSONL:
+
+```json
+{"timestamp": "2026-06-17T03:00:00+00:00", "user_id": "joao", "user_role": "admin", "action": "approve", "task_id": "TASK-GOV-001", "allowed": true, "details": "Contexto de aprovação exibido"}
+{"timestamp": "2026-06-17T03:01:00+00:00", "user_id": "carlos", "user_role": "developer", "action": "approve", "task_id": "TASK-GOV-001", "allowed": false, "details": "Você não tem permissão para aprovar plano..."}
+```
+
+**Para analisar o audit log:**
+```bash
+# Ver todas as ações negadas
+grep '"allowed": false' logs/audit.log | jq .
+
+# Ver ações de um usuário específico
+grep '"user_id": "joao"' logs/audit.log | jq .
+
+# Ver por ação
+grep '"action": "approve"' logs/audit.log | jq .
+```
+

@@ -12,6 +12,8 @@ if SCRIPT_DIR not in sys.path:
 
 import cli_colors
 from governance_loader import load_governance_rules
+from rbac import get_current_user, require_permission, is_rbac_enabled
+import audit_logger
 
 def print_help():
     print(cli_colors.bold(cli_colors.blue("==================================================")))
@@ -224,12 +226,22 @@ def resolve_command(cmd_arg):
 def main():
     # Load governance rules first (fail-safe check)
     rules = load_governance_rules()
+
+    # Resolve usuário ativo para RBAC (rápido, retorna ("solo", "admin") quando desativado)
+    user_id, user_role = get_current_user()
     
     if len(sys.argv) < 2 or sys.argv[1] in ["-h", "--help", "help"]:
         tasks = get_all_tasks()
         active_tasks = [t for t in tasks if t["status"] == "in_progress"]
         
         print_help()
+
+        # Exibe identidade do usuário ativo quando RBAC está habilitado
+        if is_rbac_enabled():
+            from rbac import ROLE_LABELS
+            role_label = ROLE_LABELS.get(user_role, user_role)
+            print(cli_colors.bold(f"Usuário ativo: {cli_colors.cyan(user_id)} ({role_label})"))
+            print()
         
         if active_tasks:
             print(cli_colors.bold(cli_colors.yellow("Status do Projeto:")))
@@ -241,10 +253,12 @@ def main():
     cmd = resolve_command(sys.argv[1])
     
     if cmd in ["run", "sync"]:
+        require_permission(user_id, user_role, "sync")
         print(cli_colors.blue("[INFO] Iniciando sincronização das tarefas com o board remoto..."))
         try:
             import sync_tasks
             sync_tasks.main()
+            audit_logger.log_action(user_id, user_role, "sync", "", True, "Sincronização concluída com sucesso")
         except Exception as e:
             print(cli_colors.red(f"[ERRO] Falha durante a execução da sincronização: {e}"), file=sys.stderr)
             sys.exit(1)
@@ -256,21 +270,28 @@ def main():
         if not task_id:
             print(cli_colors.red(f"[ERRO] O identificador da tarefa é obrigatório para o comando '{cmd}'."), file=sys.stderr)
             sys.exit(1)
+
+        # Valida permissão ANTES de executar qualquer ação na tarefa
+        require_permission(user_id, user_role, cmd, task_id)
             
         try:
             if cmd == "start":
                 import metrics
                 metrics.start_task(task_id)
+                audit_logger.log_action(user_id, user_role, "start", task_id, True, "Tarefa iniciada")
             elif cmd == "block":
                 import metrics
                 metrics.increment_metric(task_id, "blocks")
+                audit_logger.log_action(user_id, user_role, "block", task_id, True, "Tarefa bloqueada por impedimento")
             elif cmd == "complete":
                 import metrics
                 metrics.complete_task(task_id)
+                audit_logger.log_action(user_id, user_role, "complete", task_id, True, "Tarefa concluída")
             elif cmd == "approve":
                 summary = sys.argv[3] if len(sys.argv) > 3 else None
                 import decision_pipeline
-                decision_pipeline.print_approval_context(task_id, summary=summary)
+                decision_pipeline.print_approval_context(task_id, summary=summary, user_id=user_id, user_role=user_role)
+                audit_logger.log_action(user_id, user_role, "approve", task_id, True, "Contexto de aprovação exibido")
         except Exception as e:
             print(cli_colors.red(f"[ERRO] Falha ao executar comando '{cmd}' para a tarefa {task_id}: {e}"), file=sys.stderr)
             sys.exit(1)
@@ -286,6 +307,8 @@ def main():
         if len(sys.argv) < 6:
             print(cli_colors.red("[ERRO] Para o comando 'confirm', os argumentos <ação> <valor_do_input> <impacto> são obrigatórios."), file=sys.stderr)
             sys.exit(1)
+
+        require_permission(user_id, user_role, "confirm", task_id)
             
         action = sys.argv[3]
         input_val = sys.argv[4]
@@ -294,14 +317,17 @@ def main():
         try:
             import decision_pipeline
             decision_pipeline.print_action_confirmation(task_id, action, input_val, impact)
+            audit_logger.log_action(user_id, user_role, "confirm", task_id, True, f"Confirmação de ação exibida: {action}")
         except Exception as e:
             print(cli_colors.red(f"[ERRO] Falha ao executar confirmação de ação para {task_id}: {e}"), file=sys.stderr)
             sys.exit(1)
             
     elif cmd == "report":
+        require_permission(user_id, user_role, "report")
         try:
             import metrics
             metrics.report_metrics()
+            audit_logger.log_action(user_id, user_role, "report", "", True, "Relatório de métricas gerado")
         except Exception as e:
             print(cli_colors.red(f"[ERRO] Falha ao gerar relatório de métricas: {e}"), file=sys.stderr)
             sys.exit(1)

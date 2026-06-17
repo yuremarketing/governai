@@ -14,6 +14,67 @@ sys.path.append(SCRIPT_DIR)
 from metrics import start_task, complete_task, load_metrics, metrics_transaction, add_pending_task_raw
 import cli_colors
 from governance_loader import load_governance_rules
+import audit_logger
+
+
+def _sensitive_mode():
+    """Lê modo do scanner de dados sensíveis: 'warn' | 'block' | 'mask' | None (desativado)."""
+    try:
+        config_file = os.path.join(BASE_DIR, "governai.config.json")
+        with open(config_file, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        cfg = config.get("sensitive_data", {})
+        if not cfg.get("enabled", True):
+            return None
+        return cfg.get("mode", "warn")
+    except Exception:
+        return "warn"  # fail-safe
+
+
+def _scan_task_body(task_id, body):
+    """
+    Verifica o corpo da task por dados sensíveis antes de enviar ao GitHub.
+
+    Retorna (safe_body: str | None):
+        - str  → corpo a ser enviado (original ou mascarado)
+        - None → modo block: não sincronizar esta task
+    """
+    mode = _sensitive_mode()
+    if mode is None:
+        return body  # scanner desativado
+
+    try:
+        from sensitive_data import scan, mask
+    except Exception:
+        return body  # fail-soft
+
+    findings = scan(body)
+    if not findings:
+        return body  # sem achados
+
+    # Exibe alerta
+    types_found = ", ".join(sorted({f['type'] for f in findings}))
+    print(cli_colors.yellow(f"\n⚠️  [DADO SENSÍVEL] Task {task_id}: detectado [{types_found}] no conteúdo."))
+    for f in findings:
+        print(cli_colors.yellow(f"   {f['type']:20s} → {f['masked_preview']}"))
+
+    if mode == "block":
+        print(cli_colors.red(f"   Ação: sincronização de '{task_id}' ABORTADA (modo block)."))
+        print(cli_colors.red("   Remova o dado sensível da task antes de sincronizar.\n"))
+        audit_logger.log_action(
+            "system/sync", "system", "sync", task_id, False,
+            f"Sync bloqueado: dado sensível detectado no corpo da task [{types_found}]"
+        )
+        return None  # sinaliza para pular esta task
+
+    # warn ou mask: mascara o corpo silenciosamente
+    masked = mask(body)
+    print(cli_colors.yellow(f"   Ação: conteúdo mascarado antes do envio ao GitHub.\n"))
+    audit_logger.log_action(
+        "system/sync", "system", "sync", task_id, True,
+        f"Corpo mascarado antes do sync: [{types_found}]"
+    )
+    return masked
 
 def load_env():
     env = {}
@@ -417,6 +478,13 @@ def main():
         option_id = status_options.get(target_status_name)
         if not option_id:
             option_id = status_options.get("todo") or list(status_options.values())[0]
+
+        # Verifica dados sensíveis no corpo antes de qualquer chamada à API do GitHub
+        safe_body = _scan_task_body(task_id, body)
+        if safe_body is None:
+            # Modo block: pula somente esta task, continua o sync das demais
+            continue
+        body = safe_body
             
         if title in existing_items:
             item_info = existing_items[title]

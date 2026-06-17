@@ -31,6 +31,13 @@ env = load_env()
 # Add scripts directory to path to allow importing sync_tasks
 sys.path.append(SCRIPT_DIR)
 import sync_tasks
+import audit_logger
+
+# Identidade do sistema para o audit trail.
+# O webhook opera como processo automático — não há usuário humano interativo.
+# ⚠ï¸  Isso é autorização, não autenticação: garantimos rastreabilidade da origem da ação.
+WEBHOOK_USER_ID = "system/webhook"
+WEBHOOK_ROLE = "system"
 
 PORT = int(env.get("GOVERNAI_WEBHOOK_PORT") or os.environ.get("GOVERNAI_WEBHOOK_PORT", 8080))
 SECRET = env.get("GOVERNAI_WEBHOOK_SECRET") or os.environ.get("GOVERNAI_WEBHOOK_SECRET")
@@ -45,6 +52,14 @@ def sync_worker():
             break
         try:
             print(f"[{datetime.now().strftime('%H:%M:%S')}] [WORKER] Iniciando subprocesso sync_tasks.py...")
+            audit_logger.log_action(
+                user_id=WEBHOOK_USER_ID,
+                user_role=WEBHOOK_ROLE,
+                action="sync",
+                task_id="",
+                allowed=True,
+                details="Sincronização disparada via webhook do GitHub",
+            )
             cmd = [sys.executable, os.path.join(SCRIPT_DIR, "sync_tasks.py")]
             res = subprocess.run(cmd, capture_output=True, text=True)
             if res.returncode == 0:
@@ -52,12 +67,36 @@ def sync_worker():
                 if res.stdout:
                     for line in res.stdout.strip().split("\n"):
                         print(f"   [SYNC] {line}")
+                audit_logger.log_action(
+                    user_id=WEBHOOK_USER_ID,
+                    user_role=WEBHOOK_ROLE,
+                    action="sync",
+                    task_id="",
+                    allowed=True,
+                    details="sync_tasks.py concluído com sucesso",
+                )
             else:
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] [WORKER] [ERRO] sync_tasks.py falhou com código {res.returncode}.")
                 if res.stderr:
                     print(res.stderr)
+                audit_logger.log_action(
+                    user_id=WEBHOOK_USER_ID,
+                    user_role=WEBHOOK_ROLE,
+                    action="sync",
+                    task_id="",
+                    allowed=False,
+                    details=f"sync_tasks.py falhou com código {res.returncode}: {res.stderr[:200] if res.stderr else ''}",
+                )
         except Exception as e:
             print(f"[{datetime.now().strftime('%H:%M:%S')}] [WORKER] [ERRO] Exceção na execução de sync_tasks.py: {e}")
+            audit_logger.log_action(
+                user_id=WEBHOOK_USER_ID,
+                user_role=WEBHOOK_ROLE,
+                action="sync",
+                task_id="",
+                allowed=False,
+                details=f"Exceção em sync_tasks.py: {e}",
+            )
         finally:
             sync_queue.task_done()
 

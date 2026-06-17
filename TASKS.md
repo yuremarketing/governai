@@ -6,6 +6,25 @@
 
 ## 🔴 Prioridade Alta
 
+### TASK-GOV-021 — Detecção de dados sensíveis (LGPD-ready)
+
+**Status:** [ ]
+**Descrição:**
+Implementar um scanner de dados sensíveis que intercepta conteúdo antes de ser gravado em logs, sincronizado com boards remotos ou exibido no terminal. O sistema detecta padrões como tokens, CPF, e-mails, senhas e chaves de API — alertando ou mascarando automaticamente para garantir conformidade com LGPD/GDPR.
+
+**Critérios de aceite:**
+- [x] Módulo `scripts/sensitive_data.py` com função `scan(text)` retornando lista de ocorrências
+- [x] Padrões cobertos: token/API key, CPF formatado, e-mail, senha inline, Discord webhook, chave PEM
+- [x] Função `mask(text)` que mascara dados sensíveis encontrados (ex: `ghp_****`)
+- [x] Integração no `audit_logger.py`: mascarar `details` antes de gravar no `audit.log`
+- [x] Integração no `decision_pipeline.py`: alertar se descrição da task contém dados sensíveis
+- [x] Integração no `sync_tasks.py`: alertar antes de sincronizar conteúdo com GitHub
+- [x] Configurável via `governai.config.json` (ativar/desativar, modo warn vs block)
+- [x] Mensagem amigável ao usuário quando dado sensível é detectado
+- [x] Testes cobrindo todos os padrões
+
+---
+
 ### TASK-001 — Refinar identidade do GovernAI
 
 **Status:** [x]
@@ -342,7 +361,8 @@ Implementar um mecanismo de coleta de métricas para o GovernAI que registre o t
 
 ### TASK-006 — Melhorar a experiência da CLI (UX/UI)
 
-**Status:** [x]
+**Status:** [x] ❌ CANCELADA / SUPERADA
+**Motivo:** CLI completa já implementada com comandos, atalhos, parsing, RBAC, audit log e menus interativos. Task superada pela evolução do produto.
 **Descrição:**
 Melhorar a facilidade de uso do GovernAI simplificando comandos, adicionando atalhos, resolução de IDs parciais de tarefas com desambiguação e menus de seleção interativos.
 
@@ -498,7 +518,8 @@ O usuário receberá uma mensagem clara e amigável no console informando que o 
 
 ### TASK-GOV-015 — Melhorar fluxo não-interativo da CLI
 
-**Status:** [ ]
+**Status:** [ ] ❌ CANCELADA
+**Motivo:** Resolvida via implementação do RBAC (TASK-GOV-020): env var `GOVERNAI_USER_ID`, fallback automático de usuário e execução sem input em modo não-interativo já cobrem todos os critérios de aceite desta task.
 
 **Objetivo:**
 Eliminar a necessidade de input manual no terminal e melhorar a transparência das ações executadas pelo agente.
@@ -529,38 +550,22 @@ O agente poderá disparar comandos de sincronização, início e conclusão de t
 
 ---
 
-### TASK-GOV-016 — Controlar requisições e migrar Webhook Receiver do Vercel
+### TASK-GOV-020 — Implementar controle de papéis e permissões (RBAC)
 
-**Status:** [ ]
-
-**Objetivo:**
-Resolver o excesso de requisições recebidas pelo Vercel que pode gerar cobranças inesperadas, investigando a causa raiz e implementando uma solução de rate limiting ou migração do serviço.
-
+**Status:** [x]
 **Descrição:**
-O webhook receiver atualmente hospedado no Vercel está recebendo um volume anormal de requisições, possivelmente causado por loops de sincronização entre o GovernAI e o GitHub Projects. Isso pode gerar custos inesperados na plataforma Vercel. Esta task investiga a causa, implementa proteções de rate limiting e avalia a migração do receiver para uma plataforma mais adequada a serviços persistentes (Railway, Render ou Fly.io).
+Implementar sistema de Role-Based Access Control (RBAC) para permitir que o GovernAI controle quem pode executar cada ação no sistema. Inclui papéis (admin, reviewer, developer, viewer), arquivo de usuários, validação centralizada, audit log e compatibilidade com modo solo.
 
-**Critérios de Aceite:**
-- [ ] Analisar logs do Vercel para identificar volume, origem e padrão das requisições excessivas.
-- [ ] Verificar se o loop de webhook (GovernAI → GitHub → webhook → GovernAI) está causando o problema.
-- [ ] Implementar rate limiting no `webhook_receiver.py` (ex: ignorar eventos repetidos do mesmo tipo em menos de 30 segundos).
-- [ ] Avaliar e documentar alternativas ao Vercel para hospedar o receiver (Railway, Render, Fly.io).
-- [ ] Caso necessário, migrar o `webhook_receiver.py` para plataforma gratuita e persistente.
-- [ ] Garantir que a migração não interrompa o fluxo de sincronização com o GitHub Projects.
-- [ ] Notificar o responsável pelo repositório (Gustavo) sobre a solução implementada.
-
-**Passos de Execução (Checklist):**
-- [ ] Iniciar a tarefa localmente (mudar status para `[/]` em TASKS.md)
-- [ ] Criar o plano técnico de trabalho no painel de controle
-- [ ] Coletar e analisar logs do Vercel com o Gustavo
-- [ ] Implementar rate limiting no webhook_receiver.py
-- [ ] Avaliar e executar migração de plataforma se necessário
-- [ ] Concluir a tarefa no arquivo local (status `[x]` em TASKS.md)
-- [ ] Sincronizar as atualizações finais com o painel remoto
-- [ ] Registrar histórico de entrega em walkthrough.md
-- [ ] Realizar o commit e push final para o repositório remoto
-
-**Resultado Esperado:**
-O Vercel deixará de receber requisições excessivas, eliminando o risco de cobranças. O webhook receiver funcionará de forma estável, segura e sem custos inesperados.
+**Critérios de aceite:**
+- [x] Módulo central `scripts/rbac.py` com `check_permission()` e `require_permission()`
+- [x] Módulo `scripts/audit_logger.py` com log JSONL em `logs/audit.log`
+- [x] Arquivo `users.json` com estrutura de usuários e papéis
+- [x] `governai.config.json` com seção `rbac` (disabled por padrão)
+- [x] CLI integrado com validação em todos os comandos críticos
+- [x] `decision_pipeline.py` integrado com user_id e audit log
+- [x] `webhook_receiver.py` registrando ações com user system/webhook
+- [x] Backward compatibility: modo solo sem mudanças quando `enabled: false`
+- [x] README.md documentando RBAC
 
 ---
 
