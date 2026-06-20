@@ -582,6 +582,19 @@ O agente poderá disparar comandos de sincronização, início e conclusão de t
 
 ---
 
+### TASK-GOV-022 — Corrigir concorrência de execução automática de Artefatos e Solicitação de Aprovação
+
+**Status:** [ ]
+**Descrição:**
+Garantir que a IA pause a execução e peça a aprovação manual após a criação do `implementation_plan.md`, evitando que scripts sejam rodados preventivamente ou sem confirmação clara do usuário, corrigindo o fluxo de UX onde o agente avança sozinho.
+
+**Critérios de aceite:**
+- Investigar se a aprovação de artefatos (ArtifactMetadata.RequestFeedback) está rodando sem pausar a IA (bug no fluxo auto-approved).
+- Impedir que comandos de terminal ou atualizações no `TASKS.md` sejam executados antes de uma pausa dura de confirmação do usuário.
+- Se o sistema tiver política de aprovação automática de artefatos, garantir que o prompt avise de forma clara, e reforce uma verificação em dois passos.
+
+---
+
 ## ✅ Concluídas
 
 *(nenhuma ainda nesta seção)*
