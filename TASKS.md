@@ -536,7 +536,7 @@ Tornar a comunicação do GovernAI mais amigável, clara e compreensível para u
 
 ### TASK-GOV-015 — Melhorar fluxo não-interativo da CLI
 
-**Status:** [ ] ❌ CANCELADA
+**Status:** [x] ❌ CANCELADA
 **Motivo:** Resolvida via implementação do RBAC (TASK-GOV-020): env var `GOVERNAI_USER_ID`, fallback automático de usuário e execução sem input em modo não-interativo já cobrem todos os critérios de aceite desta task.
 
 **Objetivo:**
