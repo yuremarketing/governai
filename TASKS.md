@@ -4,11 +4,11 @@
 
 ---
 
-## 🔴 Prioridade Alta
+## 🛡️ Segurança & Privacidade
 
 ### TASK-GOV-021 — Detecção de dados sensíveis (LGPD-ready)
 
-**Status:** [ ]
+**Status:** [x]
 **Descrição:**
 Implementar um scanner de dados sensíveis que intercepta conteúdo antes de ser gravado em logs, sincronizado com boards remotos ou exibido no terminal. O sistema detecta padrões como tokens, CPF, e-mails, senhas e chaves de API — alertando ou mascarando automaticamente para garantir conformidade com LGPD/GDPR.
 
@@ -25,188 +25,26 @@ Implementar um scanner de dados sensíveis que intercepta conteúdo antes de ser
 
 ---
 
-### TASK-001 — Refinar identidade do GovernAI
-
-**Status:** [x]
-**Descrição:**
-Detalhar melhor o posicionamento do GovernAI como framework de governança para desenvolvimento com IA, incluindo definição clara de público-alvo e proposta de valor.
-
-**Critérios de aceite:**
-- Definição de público-alvo (dev solo, times, startups)
-- Proposta de valor clara
-- Atualização do README.md
-
----
-
-### TASK-002 — Definir casos de uso principais
-
-**Status:** [x]
-**Descrição:**
-Mapear os principais cenários onde o GovernAI pode ser utilizado.
-
-**Critérios de aceite:**
-- Pelo menos 3 casos de uso definidos
-- Documentação clara no README ou GEMINI.md
-
----
-
-### TASK-003 — Criar template padrão de task
-
-**Status:** [x]
-**Descrição:**
-Definir um modelo padrão de task para garantir consistência e facilidade de uso.
-
-**Critérios de aceite:**
-- Template com seções obrigatórias
-- Exemplo de task preenchida
-
----
-
-### TASK-008 — Definir camada de decisão do GovernAI
-
-**Status:** [x]
-**Descrição:**
-Especificar e estruturar a camada de decisão do GovernAI com uma matriz de decisão explícita, ordem de prioridade (determinístico → LLM → humano), critérios detalhados de bloqueio e fallback seguro baseado em nível de confiança.
-
-**Critérios de aceite:**
-- Matriz de decisão explícita com regras determinísticas mapeadas.
-- Definição da ordem de prioridade de classificação (Determinístico → LLM → Humano).
-- Detalhar critérios de bloqueio (impedimento).
-- Fallback seguro baseado em nível de confiança (limiar de classificação da LLM).
-- Documentação completa em docs/decision_layer.md.
-
----
-
-### TASK-009 — Integrar agente com script de sincronização do board
-
-**Status:** [x]
-**Descrição:**
-Integrar o agente do GovernAI com o script/lógica de sincronização do board. O agente deve atualizar automaticamente o GitHub Projects durante as transições de status das tasks (criação no Backlog, início em In Progress, revisão em In Review, bloqueio em Blocked e conclusão em Done) sem a necessidade de acionamento manual externo.
-
-**Critérios de aceite:**
-- Integração da lógica de sincronização nas instruções/regras do agente do GovernAI (ex: no fluxo padrão ou `.antigravityrules`).
-- Atualização em tempo real do status do card no GitHub Projects correspondente à mudança de estado local.
-- Tratamento automático de erros de comunicação com a API do GitHub.
-
----
-
-### TASK-010 — Estender sincronização para atualizar corpo das tasks no board
-
-**Status:** [x]
-**Descrição:**
-Estender o script de sincronização para atualizar também o corpo (body) dos cards no GitHub Projects, garantindo que o board reflita com precisão o conteúdo atualizado da task, incluindo sua descrição detalhada, critérios de aceite, checklist de execução e relatórios de progresso ou conclusão.
-
-**Critérios de aceite:**
-- Sincronização e atualização automática do corpo do card correspondente a qualquer modificação em sua seção do `TASKS.md` local.
-- Preservação de toda a formatação markdown no corpo dos cards do GitHub.
-- Comparação e validação de diferenças do conteúdo local vs remoto antes de enviar mutações desnecessárias (otimização de chamadas de API).
-
----
-
-### TASK-012 — Garantir idempotência no metrics.py
-
-**Status:** [x]
-**Descrição:**
-Ajustar o script `scripts/metrics.py` para garantir idempotência. Deve evitar a duplicação de eventos `start` e `complete` (por exemplo, ignorar chamadas repetidas de `start` se a tarefa já estiver iniciada, e `complete` se já estiver concluída) e proteger os contadores de inconsistências.
-
-**Critérios de aceite:**
-- Comando `start` não deve reinicializar ou zerar dados de uma tarefa que já esteja em andamento (`in_progress`) ou concluída.
-- Comando `complete` não deve recalcular a duração ou sobrescrever o timestamp final de uma tarefa que já esteja como `completed`.
-- Proteção contra incrementos redundantes e tratamento robusto de leitura/escrita simultânea no JSON.
-
----
-
-### TASK-013 — Implementar mecanismo anti-loop na sincronização
-
-**Status:** [x]
-**Descrição:**
-Implementar um mecanismo anti-loop na sincronização bidirecional entre o `TASKS.md` local e o board do GitHub Projects, utilizando uma flag de origem (metadata/tag) para identificar a origem das atualizações e evitar o reprocessamento infinito de eventos gerados pelo próprio sistema.
-
-**Critérios de aceite:**
-- Definição de uma convenção ou marcador de origem nas atualizações (ex: comentário HTML ou tag no corpo do card e no `TASKS.md`).
-- Lógica no sincronizador para ignorar e descartar eventos de sincronização se o autor ou origem da mudança for o próprio agente do GovernAI.
-- Teste de estresse simulando atualizações concorrentes para garantir que o fluxo de sincronização converge e encerra sem entrar em loop.
-
----
-
-### TASK-014 — Adicionar status interno alinhado com o fluxo no metrics.json
-
-**Status:** [x]
-**Descrição:**
-Adicionar e gerenciar um campo de status interno estruturado no arquivo local `logs/metrics.json` para cada tarefa, suportando os estados `pending`, `in_progress`, `done` e `blocked` em total consistência com o ciclo de vida do GovernAI.
-
-**Critérios de aceite:**
-- Configuração do status padrão como `pending` ao inicializar o rastreamento da tarefa sem iniciá-la imediatamente.
-- Suporte para comandos de transição de status em `scripts/metrics.py` (Ex: transição para `blocked` e retorno para `in_progress`).
-- Sincronização automática das transições do `metrics.json` nas regras descritas em `.antigravityrules`.
-
----
-
-### TASK-015 — Sincronizar e garantir consistência de estados entre sistemas
-
-**Status:** [x]
-**Descrição:**
-Garantir a consistência de estados e conteúdo de todas as tarefas entre o arquivo local `TASKS.md` (definido como fonte única de verdade), o board do GitHub Projects e o arquivo `logs/metrics.json`. Qualquer alteração no `TASKS.md` local deve sincronizar de forma atômica e consistente os estados dos outros dois sistemas.
-
-**Critérios de aceite:**
-- Mapeamento centralizado e unificado de estados entre `TASKS.md` (markdown), GitHub Projects (columns) e `metrics.json` (json).
-- Execução encadeada e atômica onde a atualização do `TASKS.md` dispara a sincronização do GitHub Projects e a atualização correspondente no `metrics.json` sem desvios.
-- Validação automática de integridade que impede estados inconsistentes (Ex: uma tarefa marcada como concluída `[x]` no markdown mas `in_progress` no metrics/board).
-
----
-
-### TASK-016 — Implementar sistema de alertas no GovernAI
-
-**Status:** [x]
-**Descrição:**
-Implementar um sistema de alertas no GovernAI para identificar tasks travadas, excesso de revisões e tempos anormais de execução com base nas métricas coletadas.
-
-**Critérios de aceite:**
-- Definição de limiares configuráveis para revisões máximas, duração de execução e tempo de inatividade das tasks.
-- Detecção e relatório de tarefas anômalas (com alertas) exibidos no comando `report` de métricas.
-- Flag ou status visual de alerta impresso de maneira clara no console para tarefas que excedam os limiares.
-
----
-
-### TASK-017 — Implementar integração via GitHub Webhooks
-
-**Status:** [x]
-**Descrição:**
-Implementar um mecanismo de recepção de eventos via GitHub Webhooks para disparar automaticamente as ações e sincronizações do GovernAI quando houver movimentações ou alterações nos cards do board do GitHub Projects.
-
-**Critérios de aceite:**
-- Criação de um endpoint básico capaz de receber e validar payloads de webhooks do GitHub (com Webhook Secret).
-- Tratamento de eventos de Project V2 (`project_v2_item` criado, editado, movido).
-- Execução automatizada da sincronização e validações locais decorrentes de mudanças remotas no board.
-
----
-
-### TASK-018 — Implementar envio ativo de alertas do GovernAI
-
-**Status:** [x]
-**Descrição:**
-Implementar um mecanismo de envio ativo e automatizado de notificações/alertas do GovernAI (por exemplo, via Slack, Discord ou e-mail) quando anomalias críticas forem identificadas pelas métricas (tasks bloqueadas, alta taxa de revisão e tempo excessivo de execução).
-
-**Critérios de aceite:**
-- Integração de adaptadores de notificação extensíveis (Ex: Webhooks do Slack/Discord ou SMTP para e-mail).
-- Configuração de credenciais de notificação seguras via variáveis de ambiente no `.env` (ex: `SLACK_WEBHOOK_URL`).
-- Disparo automático de alertas no momento em que uma anomalia for detectada (ex: transição para `blocked` ou quando uma tarefa exceder os limiares durante a sincronização).
-
----
-
-### TASK-019 — Aplicar hardening no sistema de notificações
+### TASK-GOV-020 — Implementar controle de papéis e permissões (RBAC)
 
 **Status:** [ ]
 **Descrição:**
-Aplicar hardening e aumentar a robustez do sistema de notificações ativas (notifier), incluindo a configuração explícita de timeout HTTP, tratamento estruturado de exceções em todas as chamadas de rede, padronização estruturada de payloads e logging detalhado de envio de alertas.
+Implementar sistema de Role-Based Access Control (RBAC) para permitir que o GovernAI controle quem pode executar cada ação no sistema. Inclui papéis (admin, reviewer, developer, viewer), arquivo de usuários, validação centralizada, audit log e compatibilidade com modo solo.
 
 **Critérios de aceite:**
-- Timeout HTTP explícito configurado em todas as chamadas de rede/urllib (ex: 5 segundos).
-- Tratamento de exceções (try/except) em todos os adaptadores (Slack, Discord, SMTP) para evitar que falhas individuais abortem a execução do worker.
-- Padronização de payloads utilizando um modelo de dados comum ou função geradora.
-- Registro detalhado de envio (sucesso, falha, timeout) em arquivo de log específico (ex: `logs/notifications.log`) ou saída padrão com timestamp.
+- [x] Módulo central `scripts/rbac.py` com `check_permission()` e `require_permission()`
+- [x] Módulo `scripts/audit_logger.py` com log JSONL em `logs/audit.log`
+- [x] Arquivo `users.json` com estrutura de usuários e papéis
+- [x] `governai.config.json` com seção `rbac` (disabled por padrão)
+- [x] CLI integrado com validação em todos os comandos críticos
+- [x] `decision_pipeline.py` integrado com user_id e audit log
+- [x] `webhook_receiver.py` registrando ações com user system/webhook
+- [x] Backward compatibility: modo solo sem mudanças quando `enabled: false`
+- [x] README.md documentando RBAC
 
 ---
+
+## 🤖 Governança & CLI Core
 
 ### TASK-GOV-001 — Implementar pipeline de decisão obrigatório no GovernAI
 
@@ -311,11 +149,284 @@ Garantir que o GovernAI exiba claramente o contexto de decisão das tarefas e fu
 
 ---
 
+### TASK-008 — Definir camada de decisão do GovernAI
 
+**Status:** [x]
+**Descrição:**
+Especificar e estruturar a camada de decisão do GovernAI com uma matriz de decisão explícita, ordem de prioridade (determinístico → LLM → humano), critérios detalhados de bloqueio e fallback seguro baseado em nível de confiança.
 
+**Critérios de aceite:**
+- Matriz de decisão explícita com regras determinísticas mapeadas.
+- Definição da ordem de prioridade de classificação (Determinístico → LLM → Humano).
+- Detalhar critérios de bloqueio (impedimento).
+- Fallback seguro baseado em nível de confiança (limiar de classificação da LLM).
+- Documentação completa em docs/decision_layer.md.
 
+---
 
-## 🟡 Prioridade Média
+### TASK-GOV-007 — Implementar fail-safe de governança no Webhook Receiver
+
+**Status:** [ ]
+**Descrição:**
+Garantir que o script `webhook_receiver.py` falhe de forma segura na inicialização caso as regras de governança em `governai.config.json` não possam ser carregadas.
+
+**Critérios de aceite:**
+- Importar e invocar `load_governance_rules()` no `main()` do `webhook_receiver.py` antes de iniciar o servidor HTTP.
+- Garantir que erros de configuração abortem a inicialização com exit code 1.
+
+---
+
+### TASK-GOV-013 — Instalação padrão do GovernAI
+
+**Status:** [ ]
+
+**Objetivo:**
+Permitir que qualquer pessoa instale o GovernAI no seu computador de forma automática e extremamente simples, usando um único comando.
+
+**Descrição:**
+Criaremos um script de instalação padrão (`install_governai.sh`) que automatiza toda a configuração inicial do framework (instalação de dependências, setup de atalhos e inicialização segura das chaves de configuração). Isso prepara o caminho para futuras instalações via pacotes Python (ex: `pip install governai`).
+
+**Critérios de Aceite:**
+- [ ] Criar o script executável `install_governai.sh` na raiz do projeto.
+- [ ] O script de instalação deve verificar dependências básicas (como Python 3 e Git) e alertar o usuário caso não estejam disponíveis.
+- [ ] O script deve automatizar a configuração do executável `governai` no path do usuário ou criar um alias amigável para facilitar o uso global.
+- [ ] Configurar de forma fail-safe o arquivo inicial `governai.config.json` e o arquivo `.env` (exemplo).
+- [ ] Apresentar mensagens claras, amigáveis e em português durante todo o progresso da instalação.
+
+**Passos de Execução (Checklist):**
+- [ ] Iniciar a tarefa localmente (mudar status para `[/]` em TASKS.md)
+- [ ] Criar o plano técnico na pasta de trabalho e aguardar aceitação do usuário
+- [ ] Escrever o código do script de instalação `install_governai.sh`
+- [ ] Validar a instalação limpa em um ambiente de teste simulado
+- [ ] Marcar a tarefa como concluída (`[x]`) em TASKS.md
+- [ ] Sincronizar o andamento com o GitHub Projects
+- [ ] Registrar histórico de entrega em walkthrough.md
+- [ ] Finalizar o commit e enviar o código para o servidor remoto
+
+**Resultado Esperado:**
+O usuário não precisará mais configurar pastas, variáveis de ambiente ou dependências manualmente para usar o GovernAI. Ele simplesmente executará o instalador padrão e o sistema estará pronto para atuar e proteger o projeto imediatamente.
+
+---
+
+## 📊 Métricas, Monitoramento & Alertas
+
+### TASK-011 — Implementar coleta de métricas do sistema GovernAI
+
+**Status:** [x]
+**Descrição:**
+Implementar um mecanismo de coleta de métricas para o GovernAI que registre o tempo total de execução de tasks, o número de revisões efetuadas, a quantidade de bloqueios encontrados e o volume/custo de uso de LLM (tokens consumidos).
+
+**Critérios de aceite:**
+- Script ou módulo para rastrear tempo decorrido de tasks (início a conclusão).
+- Contador de transições de status (revisões e bloqueios).
+- Registro de logs ou banco de dados local consolidando o uso de tokens da LLM.
+- Relatório de métricas consolidadas acessível via CLI ou arquivo Markdown.
+
+---
+
+### TASK-012 — Garantir idempotência no metrics.py
+
+**Status:** [x]
+**Descrição:**
+Ajustar o script `scripts/metrics.py` para garantir idempotência. Deve evitar a duplicação de eventos `start` e `complete` (por exemplo, ignorar chamadas repetidas de `start` se a tarefa já estiver iniciada, e `complete` se já estiver concluída) e proteger os contadores de inconsistências.
+
+**Critérios de aceite:**
+- Comando `start` não deve reinicializar ou zerar dados de uma tarefa que já esteja em andamento (`in_progress`) ou concluída.
+- Comando `complete` não deve recalcular a duração ou sobrescrever o timestamp final de uma tarefa que já esteja como `completed`.
+- Proteção contra incrementos redundantes e tratamento robusto de leitura/escrita simultânea no JSON.
+
+---
+
+### TASK-014 — Adicionar status interno alinhado com o fluxo no metrics.json
+
+**Status:** [x]
+**Descrição:**
+Adicionar e gerenciar um campo de status interno estruturado no arquivo local `logs/metrics.json` para cada tarefa, suportando os estados `pending`, `in_progress`, `done` e `blocked` em total consistência com o ciclo de vida do GovernAI.
+
+**Critérios de aceite:**
+- Configuração do status padrão como `pending` ao inicializar o rastreamento da tarefa sem iniciá-la imediatamente.
+- Suporte para comandos de transição de status em `scripts/metrics.py` (Ex: transição para `blocked` e retorno para `in_progress`).
+- Sincronização automática das transições do `metrics.json` nas regras descritas em `.antigravityrules`.
+
+---
+
+### TASK-016 — Implementar sistema de alertas no GovernAI
+
+**Status:** [x]
+**Descrição:**
+Implementar um sistema de alertas no GovernAI para identificar tasks travadas, excesso de revisões e tempos anormais de execução com base nas métricas coletadas.
+
+**Critérios de aceite:**
+- Definição de limiares configuráveis para revisões máximas, duração de execução e tempo de inatividade das tasks.
+- Detecção e relatório de tarefas anômalas (com alertas) exibidos no comando `report` de métricas.
+- Flag ou status visual de alerta impresso de maneira clara no console para tarefas que excedam os limiares.
+
+---
+
+### TASK-018 — Implementar envio ativo de alertas do GovernAI
+
+**Status:** [x]
+**Descrição:**
+Implementar um mecanismo de envio ativo e automatizado de notificações/alertas do GovernAI (por exemplo, via Slack, Discord ou e-mail) quando anomalias críticas forem identificadas pelas métricas (tasks bloqueadas, alta taxa de revisão e tempo excessivo de execução).
+
+**Critérios de aceite:**
+- Integração de adaptadores de notificação extensíveis (Ex: Webhooks do Slack/Discord ou SMTP para e-mail).
+- Configuração de credenciais de notificação seguras via variáveis de ambiente no `.env` (ex: `SLACK_WEBHOOK_URL`).
+- Disparo automático de alertas no momento em que uma anomalia for detectada (ex: transição para `blocked` ou quando uma tarefa exceder os limiares durante a sincronização).
+
+---
+
+### TASK-019 — Aplicar hardening no sistema de notificações
+
+**Status:** [ ]
+**Descrição:**
+Aplicar hardening e aumentar a robustez do sistema de notificações ativas (notifier), incluindo a configuração explícita de timeout HTTP, tratamento estruturado de exceções em todas as chamadas de rede, padronização estruturada de payloads e logging detalhado de envio de alertas.
+
+**Critérios de aceite:**
+- Timeout HTTP explícito configurado em todas as chamadas de rede/urllib (ex: 5 segundos).
+- Tratamento de exceções (try/except) em todos os adaptadores (Slack, Discord, SMTP) para evitar que falhas individuais abortem a execução do worker.
+- Padronização de payloads utilizando um modelo de dados comum ou função geradora.
+- Registro detalhado de envio (sucesso, falha, timeout) em arquivo de log específico (ex: `logs/notifications.log`) ou saída padrão com timestamp.
+
+---
+
+## 🔄 Integração com Board
+
+### TASK-009 — Integrar agente com script de sincronização do board
+
+**Status:** [x]
+**Descrição:**
+Integrar o agente do GovernAI com o script/lógica de sincronização do board. O agente deve atualizar automaticamente o GitHub Projects durante as transições de status das tasks (criação no Backlog, início em In Progress, revisão em In Review, bloqueio em Blocked e conclusão em Done) sem a necessidade de acionamento manual externo.
+
+**Critérios de aceite:**
+- Integração da lógica de sincronização nas instruções/regras do agente do GovernAI (ex: no fluxo padrão ou `.antigravityrules`).
+- Atualização em tempo real do status do card no GitHub Projects correspondente à mudança de estado local.
+- Tratamento automático de erros de comunicação com a API do GitHub.
+
+---
+
+### TASK-010 — Estender sincronização para atualizar corpo das tasks no board
+
+**Status:** [x]
+**Descrição:**
+Estender o script de sincronização para atualizar também o corpo (body) dos cards no GitHub Projects, garantindo que o board reflita com precisão o conteúdo atualizado da task, incluindo sua descrição detalhada, critérios de aceite, checklist de execução e relatórios de progresso ou conclusão.
+
+**Critérios de aceite:**
+- Sincronização e atualização automática do corpo do card correspondente a qualquer modificação em sua seção do `TASKS.md` local.
+- Preservação de toda a formatação markdown no corpo dos cards do GitHub.
+- Comparação e validação de diferenças do conteúdo local vs remoto antes de enviar mutações desnecessárias (otimização de chamadas de API).
+
+---
+
+### TASK-013 — Implementar mecanismo anti-loop na sincronização
+
+**Status:** [x]
+**Descrição:**
+Implementar um mecanismo anti-loop na sincronização bidirecional entre o `TASKS.md` local e o board do GitHub Projects, utilizando uma flag de origem (metadata/tag) para identificar a origem das atualizações e evitar o reprocessamento infinito de eventos gerados pelo próprio sistema.
+
+**Critérios de aceite:**
+- Definição de uma convenção ou marcador de origem nas atualizações (ex: comentário HTML ou tag no corpo do card e no `TASKS.md`).
+- Lógica no sincronizador para ignorar e descartar eventos de sincronização se o autor ou origem da mudança for o próprio agente do GovernAI.
+- Teste de estresse simulando atualizações concorrentes para garantir que o fluxo de sincronização converge e encerra sem entrar em loop.
+
+---
+
+### TASK-015 — Sincronizar e garantir consistência de estados entre sistemas
+
+**Status:** [x]
+**Descrição:**
+Garantir a consistência de estados e conteúdo de todas as tarefas entre o arquivo local `TASKS.md` (definido como fonte única de verdade), o board do GitHub Projects e o arquivo `logs/metrics.json`. Qualquer alteração no `TASKS.md` local deve sincronizar de forma atômica e consistente os estados dos outros dois sistemas.
+
+**Critérios de aceite:**
+- Mapeamento centralizado e unificado de estados entre `TASKS.md` (markdown), GitHub Projects (columns) e `metrics.json` (json).
+- Execução encadeada e atômica onde a atualização do `TASKS.md` dispara a sincronização do GitHub Projects e a atualização correspondente no `metrics.json` sem desvios.
+- Validação automática de integridade que impede estados inconsistentes (Ex: uma tarefa marcada como concluída `[x]` no markdown mas `in_progress` no metrics/board).
+
+---
+
+### TASK-017 — Implementar integração via GitHub Webhooks
+
+**Status:** [x]
+**Descrição:**
+Implementar um mecanismo de recepção de eventos via GitHub Webhooks para disparar automaticamente as ações e sincronizações do GovernAI quando houver movimentações ou alterações nos cards do board do GitHub Projects.
+
+**Critérios de aceite:**
+- Criação de um endpoint básico capaz de receber e validar payloads de webhooks do GitHub (com Webhook Secret).
+- Tratamento de eventos de Project V2 (`project_v2_item` criado, editado, movido).
+- Execução automatizada da sincronização e validações locais decorrentes de mudanças remotas no board.
+
+---
+
+### TASK-GOV-014 — Alertar sobre falhas de conexão ou credenciais da API do GitHub
+
+**Status:** [ ]
+
+**Objetivo:**
+Garantir que o usuário seja alertado de forma clara e amigável caso o GovernAI não consiga sincronizar com o board do GitHub devido a credenciais inválidas ou configuração incorreta.
+
+**Descrição:**
+Atualmente, falhas de conexão com a API do GitHub (ex: erro 401 de token inválido/expirado, ou erro de número de projeto incorreto) interrompem a sincronização sem gerar um alerta claro no banco de dados de alertas ou no relatório de métricas. Implementaremos um mecanismo de captura dessas falhas no script `sync_tasks.py` para registrar um alerta ativo no sistema, facilitando a identificação do problema pelo usuário.
+
+**Critérios de Aceite:**
+- [ ] Tratar exceções de rede e HTTP (especialmente erros 401 e 404) nas chamadas à API do GitHub no script `sync_tasks.py`.
+- [ ] Registrar um alerta ativo (categoria "conexao_github") no `metrics.json` sob a tarefa ativa ou um ID global de monitoramento sempre que a sincronização falhar por esse motivo.
+- [ ] Exibir orientações de resolução humanizadas na CLI explicando passo a passo como corrigir as credenciais no arquivo `.env`.
+- [ ] Limpar o alerta de conexão automaticamente assim que uma sincronização for realizada com sucesso.
+
+**Passos de Execução (Checklist):**
+- [ ] Iniciar a tarefa localmente (mudar status para `[/]` em TASKS.md)
+- [ ] Criar o plano técnico de trabalho no painel de controle
+- [ ] Modificar o script `sync_tasks.py` para capturar e tratar erros de conexão da API
+- [ ] Implementar a gravação e limpeza automática do alerta de conexão no `metrics.json`
+- [ ] Validar a exibição do alerta na CLI forçando um token inválido temporariamente
+- [ ] Concluir a tarefa no arquivo local (status `[x]` em TASKS.md)
+- [ ] Sincronizar as atualizações finais com o painel remoto
+- [ ] Registrar o histórico de entrega em walkthrough.md
+- [ ] Realizar o commit e push final das modificações
+
+**Resultado Esperado:**
+O usuário receberá uma mensagem clara e amigável no console informando que o token ou o número do projeto estão incorretos, em vez de o sistema falhar silenciosamente ou apresentar logs técnicos de erro de conexão.
+
+---
+
+## 🎨 Experiência do Usuário (UX) & Documentação
+
+### TASK-001 — Refinar identidade do GovernAI
+
+**Status:** [x]
+**Descrição:**
+Detalhar melhor o posicionamento do GovernAI como framework de governança para desenvolvimento com IA, incluindo definição clara de público-alvo e proposta de valor.
+
+**Critérios de aceite:**
+- Definição de público-alvo (dev solo, times, startups)
+- Proposta de valor clara
+- Atualização do README.md
+
+---
+
+### TASK-002 — Definir casos de uso principais
+
+**Status:** [x]
+**Descrição:**
+Mapear os principais cenários onde o GovernAI pode ser utilizado.
+
+**Critérios de aceite:**
+- Pelo menos 3 casos de uso definidos
+- Documentação clara no README ou GEMINI.md
+
+---
+
+### TASK-003 — Criar template padrão de task
+
+**Status:** [x]
+**Descrição:**
+Definir um modelo padrão de task para garantir consistência e facilidade de uso.
+
+**Critérios de aceite:**
+- Template com seções obrigatórias
+- Exemplo de task preenchida
+
+---
 
 ### TASK-004 — Criar exemplo prático de uso
 
@@ -341,24 +452,6 @@ Explicar detalhadamente todo o ciclo de vida de uma task.
 
 ---
 
-### TASK-011 — Implementar coleta de métricas do sistema GovernAI
-
-**Status:** [x]
-**Descrição:**
-Implementar um mecanismo de coleta de métricas para o GovernAI que registre o tempo total de execução de tasks, o número de revisões efetuadas, a quantidade de bloqueios encontrados e o volume/custo de uso de LLM (tokens consumidos).
-
-**Critérios de aceite:**
-- Script ou módulo para rastrear tempo decorrido de tasks (início a conclusão).
-- Contador de transições de status (revisões e bloqueios).
-- Registro de logs ou banco de dados local consolidando o uso de tokens da LLM.
-- Relatório de métricas consolidadas acessível via CLI ou arquivo Markdown.
-
----
-
----
-
-## 🟢 Prioridade Baixa
-
 ### TASK-006 — Melhorar a experiência da CLI (UX/UI)
 
 **Status:** [x] ❌ CANCELADA / SUPERADA
@@ -383,17 +476,6 @@ Definir arquitetura de uma interface visual para gestão do GovernAI.
 **Critérios de aceite:**
 - Ideia de telas
 - Fluxo de navegação
-
-
-### TASK-GOV-007 — Implementar fail-safe de governança no Webhook Receiver
-
-**Status:** [ ]
-**Descrição:**
-Garantir que o script `webhook_receiver.py` falhe de forma segura na inicialização caso as regras de governança em `governai.config.json` não possam ser carregadas.
-
-**Critérios de aceite:**
-- Importar e invocar `load_governance_rules()` no `main()` do `webhook_receiver.py` antes de iniciar o servidor HTTP.
-- Garantir que erros de configuração abortem a inicialização com exit code 1.
 
 ---
 
@@ -452,70 +534,6 @@ Tornar a comunicação do GovernAI mais amigável, clara e compreensível para u
 
 ---
 
-### TASK-GOV-013 — Instalação padrão do GovernAI
-
-**Status:** [ ]
-
-**Objetivo:**
-Permitir que qualquer pessoa instale o GovernAI no seu computador de forma automática e extremamente simples, usando um único comando.
-
-**Descrição:**
-Criaremos um script de instalação padrão (`install_governai.sh`) que automatiza toda a configuração inicial do framework (instalação de dependências, setup de atalhos e inicialização segura das chaves de configuração). Isso prepara o caminho para futuras instalações via pacotes Python (ex: `pip install governai`).
-
-**Critérios de Aceite:**
-- [ ] Criar o script executável `install_governai.sh` na raiz do projeto.
-- [ ] O script de instalação deve verificar dependências básicas (como Python 3 e Git) e alertar o usuário caso não estejam disponíveis.
-- [ ] O script deve automatizar a configuração do executável `governai` no path do usuário ou criar um alias amigável para facilitar o uso global.
-- [ ] Configurar de forma fail-safe o arquivo inicial `governai.config.json` e o arquivo `.env` (exemplo).
-- [ ] Apresentar mensagens claras, amigáveis e em português durante todo o progresso da instalação.
-
-**Passos de Execução (Checklist):**
-- [ ] Iniciar a tarefa localmente (mudar status para `[/]` em TASKS.md)
-- [ ] Criar o plano técnico na pasta de trabalho e aguardar aceitação do usuário
-- [ ] Escrever o código do script de instalação `install_governai.sh`
-- [ ] Validar a instalação limpa em um ambiente de teste simulado
-- [ ] Marcar a tarefa como concluída (`[x]`) em TASKS.md
-- [ ] Sincronizar o andamento com o GitHub Projects
-- [ ] Registrar histórico de entrega em walkthrough.md
-- [ ] Finalizar o commit e enviar o código para o servidor remoto
-
-**Resultado Esperado:**
-O usuário não precisará mais configurar pastas, variáveis de ambiente ou dependências manualmente para usar o GovernAI. Ele simplesmente executará o instalador padrão e o sistema estará pronto para atuar e proteger o projeto imediatamente.
-
----
-
-### TASK-GOV-014 — Alertar sobre falhas de conexão ou credenciais da API do GitHub
-
-**Status:** [ ]
-
-**Objetivo:**
-Garantir que o usuário seja alertado de forma clara e amigável caso o GovernAI não consiga sincronizar com o board do GitHub devido a credenciais inválidas ou configuração incorreta.
-
-**Descrição:**
-Atualmente, falhas de conexão com a API do GitHub (ex: erro 401 de token inválido/expirado, ou erro de número de projeto incorreto) interrompem a sincronização sem gerar um alerta claro no banco de dados de alertas ou no relatório de métricas. Implementaremos um mecanismo de captura dessas falhas no script `sync_tasks.py` para registrar um alerta ativo no sistema, facilitando a identificação do problema pelo usuário.
-
-**Critérios de Aceite:**
-- [ ] Tratar exceções de rede e HTTP (especialmente erros 401 e 404) nas chamadas à API do GitHub no script `sync_tasks.py`.
-- [ ] Registrar um alerta ativo (categoria "conexao_github") no `metrics.json` sob a tarefa ativa ou um ID global de monitoramento sempre que a sincronização falhar por esse motivo.
-- [ ] Exibir orientações de resolução humanizadas na CLI explicando passo a passo como corrigir as credenciais no arquivo `.env`.
-- [ ] Limpar o alerta de conexão automaticamente assim que uma sincronização for realizada com sucesso.
-
-**Passos de Execução (Checklist):**
-- [ ] Iniciar a tarefa localmente (mudar status para `[/]` em TASKS.md)
-- [ ] Criar o plano técnico de trabalho no painel de controle
-- [ ] Modificar o script `sync_tasks.py` para capturar e tratar erros de conexão da API
-- [ ] Implementar a gravação e limpeza automática do alerta de conexão no `metrics.json`
-- [ ] Validar a exibição do alerta na CLI forçando um token inválido temporariamente
-- [ ] Concluir a tarefa no arquivo local (status `[x]` em TASKS.md)
-- [ ] Sincronizar as atualizações finais com o painel remoto
-- [ ] Registrar o histórico de entrega em walkthrough.md
-- [ ] Realizar o commit e push final das modificações
-
-**Resultado Esperado:**
-O usuário receberá uma mensagem clara e amigável no console informando que o token ou o número do projeto estão incorretos, em vez de o sistema falhar silenciosamente ou apresentar logs técnicos de erro de conexão.
-
----
-
 ### TASK-GOV-015 — Melhorar fluxo não-interativo da CLI
 
 **Status:** [ ] ❌ CANCELADA
@@ -550,25 +568,6 @@ O agente poderá disparar comandos de sincronização, início e conclusão de t
 
 ---
 
-### TASK-GOV-020 — Implementar controle de papéis e permissões (RBAC)
-
-**Status:** [x]
-**Descrição:**
-Implementar sistema de Role-Based Access Control (RBAC) para permitir que o GovernAI controle quem pode executar cada ação no sistema. Inclui papéis (admin, reviewer, developer, viewer), arquivo de usuários, validação centralizada, audit log e compatibilidade com modo solo.
-
-**Critérios de aceite:**
-- [x] Módulo central `scripts/rbac.py` com `check_permission()` e `require_permission()`
-- [x] Módulo `scripts/audit_logger.py` com log JSONL em `logs/audit.log`
-- [x] Arquivo `users.json` com estrutura de usuários e papéis
-- [x] `governai.config.json` com seção `rbac` (disabled por padrão)
-- [x] CLI integrado com validação em todos os comandos críticos
-- [x] `decision_pipeline.py` integrado com user_id e audit log
-- [x] `webhook_receiver.py` registrando ações com user system/webhook
-- [x] Backward compatibility: modo solo sem mudanças quando `enabled: false`
-- [x] README.md documentando RBAC
-
----
-
 ## ✅ Concluídas
 
-_(nenhuma ainda)_
+*(nenhuma ainda nesta seção)*
