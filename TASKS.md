@@ -27,7 +27,7 @@ Implementar um scanner de dados sensíveis que intercepta conteúdo antes de ser
 
 ### TASK-GOV-020 — Implementar controle de papéis e permissões (RBAC)
 
-**Status:** [ ]
+**Status:** [x]
 **Descrição:**
 Implementar sistema de Role-Based Access Control (RBAC) para permitir que o GovernAI controle quem pode executar cada ação no sistema. Inclui papéis (admin, reviewer, developer, viewer), arquivo de usuários, validação centralizada, audit log e compatibilidade com modo solo.
 
@@ -166,7 +166,7 @@ Especificar e estruturar a camada de decisão do GovernAI com uma matriz de deci
 
 ### TASK-GOV-007 — Implementar fail-safe de governança no Webhook Receiver
 
-**Status:** [ ]
+**Status:** [x]
 **Descrição:**
 Garantir que o script `webhook_receiver.py` falhe de forma segura na inicialização caso as regras de governança em `governai.config.json` não possam ser carregadas.
 
@@ -496,7 +496,7 @@ Garantir que o usuário entenda claramente o que está aprovando antes de intera
 
 ### TASK-TEST-UX — Testar fluxo de aprovação com contexto
 
-**Status:** [/]
+**Status:** [ ]
 **Descrição:**
 Validar se o GovernAI exibe corretamente o bloco de aprovação com contexto antes de solicitar Accept/Reject.
 

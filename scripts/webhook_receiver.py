@@ -331,6 +331,9 @@ class WebhookHandler(BaseHTTPRequestHandler):
             print(f"[RECEPTOR] [ERRO] Falha ao processar reconciliacao: {e}")
 
 def main():
+    import governance_loader
+    governance_loader.load_governance_rules()
+
     server_address = ("", PORT)
     httpd = HTTPServer(server_address, WebhookHandler)
     print(f"[{datetime.now().strftime('%H:%M:%S')}] [RECEPTOR] Servidor ativo na porta {PORT}...")
