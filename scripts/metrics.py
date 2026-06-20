@@ -201,6 +201,27 @@ def update_activity_and_alerts(task_id, task_data, now, old_status, old_alerts_k
     
     dispatch_notifications(task_id, new_status, old_status, new_alerts, added_alerts)
 
+def set_global_alert(alert_key, message):
+    with metrics_transaction() as metrics:
+        if "__GLOBAL__" not in metrics:
+            metrics["__GLOBAL__"] = {"active_alerts": []}
+        
+        alerts = metrics["__GLOBAL__"].setdefault("active_alerts_dict", {})
+        
+        if alert_key not in alerts or alerts[alert_key] != message:
+            alerts[alert_key] = message
+            metrics["__GLOBAL__"]["active_alerts"] = sorted(list(alerts.values()))
+            print(cli_colors.red(f"\n🚨 [ALERTA GLOBAL] {message}\n"))
+
+def clear_global_alert(alert_key):
+    with metrics_transaction() as metrics:
+        if "__GLOBAL__" in metrics and "active_alerts_dict" in metrics["__GLOBAL__"]:
+            alerts = metrics["__GLOBAL__"]["active_alerts_dict"]
+            if alert_key in alerts:
+                del alerts[alert_key]
+                metrics["__GLOBAL__"]["active_alerts"] = sorted(list(alerts.values()))
+                print(cli_colors.green(f"✅ [MÉTRICAS] Alerta global '{alert_key}' resolvido."))
+
 def add_pending_task_raw(metrics, task_id):
     if task_id not in metrics:
         metrics[task_id] = {

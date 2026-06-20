@@ -178,7 +178,7 @@ Garantir que o script `webhook_receiver.py` falhe de forma segura na inicializa�
 
 ### TASK-GOV-013 — Instalação padrão do GovernAI
 
-**Status:** [ ]
+**Status:** [x]
 
 **Objetivo:**
 Permitir que qualquer pessoa instale o GovernAI no seu computador de forma automática e extremamente simples, usando um único comando.
@@ -359,7 +359,7 @@ Implementar um mecanismo de recepção de eventos via GitHub Webhooks para dispa
 
 ### TASK-GOV-014 — Alertar sobre falhas de conexão ou credenciais da API do GitHub
 
-**Status:** [ ]
+**Status:** [x]
 
 **Objetivo:**
 Garantir que o usuário seja alertado de forma clara e amigável caso o GovernAI não consiga sincronizar com o board do GitHub devido a credenciais inválidas ou configuração incorreta.

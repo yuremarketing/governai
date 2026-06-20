@@ -217,13 +217,16 @@ def parse_tasks():
 def query_github(query, variables=None):
     url = "https://api.github.com/graphql"
     headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
-    r = requests.post(url, json={"query": query, "variables": variables}, headers=headers)
-    if r.status_code != 200:
-        raise Exception(f"GraphQL request failed with code {r.status_code}: {r.text}")
-    res = r.json()
-    if "errors" in res:
-        raise Exception(f"GraphQL returned errors: {res['errors']}")
-    return res["data"]
+    try:
+        r = requests.post(url, json={"query": query, "variables": variables}, headers=headers)
+        if r.status_code != 200:
+            handle_connection_error(f"HTTP {r.status_code}: {r.text}")
+        res = r.json()
+        if "errors" in res:
+            handle_connection_error(f"GraphQL returned errors: {res['errors']}")
+        return res["data"]
+    except requests.exceptions.RequestException as e:
+        handle_connection_error(f"RequestException: {e}")
 
 def create_category_field(project_id):
     query = """
@@ -476,6 +479,18 @@ def update_item_status(project_id, item_id, field_id, option_id):
         "optionId": option_id
     })
 
+def handle_connection_error(e):
+    from metrics import set_global_alert
+    import cli_colors
+    print(cli_colors.red(f"\n[ERRO DE CONEXÃO] Falha ao comunicar com a API do GitHub."))
+    print(cli_colors.yellow("Verifique suas credenciais no arquivo .env:"))
+    print(cli_colors.yellow("  - O GITHUB_TOKEN é válido e não expirou?"))
+    print(cli_colors.yellow("  - O PROJECT_NUMBER está correto?"))
+    print(cli_colors.yellow("  - O GITHUB_USER corresponde ao dono do projeto?"))
+    print(cli_colors.red(f"Detalhes técnicos: {e}\n"))
+    set_global_alert("conexao_github", "Falha de comunicação com GitHub API. Verifique suas credenciais no .env.")
+    sys.exit(1)
+
 def main():
     # Load governance rules first (fail-safe check)
     load_governance_rules()
@@ -617,6 +632,12 @@ def main():
                 update_item_status(project_id, item_id, category_field_id, target_cat_option_id)
             
     print(cli_colors.green("Sincronização concluída com sucesso!"))
+    
+    try:
+        from metrics import clear_global_alert
+        clear_global_alert("conexao_github")
+    except Exception:
+        pass
 
 if __name__ == "__main__":
     main()
