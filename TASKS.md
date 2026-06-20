@@ -469,7 +469,7 @@ Melhorar a facilidade de uso do GovernAI simplificando comandos, adicionando ata
 
 ### TASK-007 — Planejar dashboard web
 
-**Status:** [ ]
+**Status:** [x]
 **Descrição:**
 Definir arquitetura de uma interface visual para gestão do GovernAI.
 
