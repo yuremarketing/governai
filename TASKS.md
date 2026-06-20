@@ -479,6 +479,20 @@ Definir arquitetura de uma interface visual para gestão do GovernAI.
 
 ---
 
+### TASK-WEB-001 — Iniciar desenvolvimento do Dashboard Web
+
+**Status:** [x]
+**Descrição:**
+Realizar o setup inicial do projeto frontend usando Next.js e TailwindCSS para o Dashboard do GovernAI.
+
+**Critérios de aceite:**
+- Projeto Next.js configurado na pasta `/dashboard`.
+- TailwindCSS configurado para suportar Dark Mode.
+- Estrutura base de layout criada com Sidebar (Overview, Kanban, Audit, Settings).
+- Tela inicial provisória renderizada com sucesso (`npm run dev`).
+
+---
+
 ### TASK-GOV-009 — Melhorar UX de aprovação (explicar artifacts antes do Accept)
 
 **Status:** [x]
