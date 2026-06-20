@@ -493,6 +493,20 @@ Realizar o setup inicial do projeto frontend usando Next.js e TailwindCSS para o
 
 ---
 
+### TASK-WEB-002 — Implementar Kanban Visual no Dashboard Web
+
+**Status:** [x]
+**Descrição:**
+Construir a interface do Kanban que lê as tarefas diretamente do arquivo TASKS.md para visualização no navegador.
+
+**Critérios de aceite:**
+- Criar API route `/api/tasks` para fazer o parser do arquivo `TASKS.md` local.
+- Criar componente de UI `KanbanBoard` com colunas (To Do, In Progress, Done).
+- Exibir os cartões coloridos de acordo com o status.
+- Integrar na página `/kanban`.
+
+---
+
 ### TASK-GOV-009 — Melhorar UX de aprovação (explicar artifacts antes do Accept)
 
 **Status:** [x]
