@@ -4,6 +4,27 @@ import urllib.request
 import json
 import smtplib
 from email.mime.text import MIMEText
+from datetime import datetime
+
+def log_notification(adapter, status, details):
+    log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "logs")
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir, exist_ok=True)
+    log_file = os.path.join(log_dir, "notifications.log")
+    timestamp = datetime.utcnow().isoformat() + "Z"
+    log_entry = f"[{timestamp}] [{adapter}] [{status}] {details}\n"
+    with open(log_file, "a", encoding="utf-8") as f:
+        f.write(log_entry)
+
+def build_notification_payload(adapter, task_id, title, message):
+    if adapter == "slack":
+        return {
+            "text": f"⚠️ *[ALERTA DE GOVERNANÇA] GovernAI*\n*Tarefa:* {task_id} - {title}\n*Alerta:* {message}"
+        }
+    elif adapter == "discord":
+        return {
+            "content": f"⚠️ **[ALERTA DE GOVERNANÇA] GovernAI**\n**Tarefa:** {task_id} - {title}\n**Alerta:** {message}"
+        }
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.dirname(SCRIPT_DIR)
@@ -46,43 +67,35 @@ def send_http_post(url, data_dict):
             return response.status in [200, 201, 204]
     except Exception as e:
         print(f"[NOTIFIER] [ERRO] Falha ao enviar HTTP POST: {e}")
-        return False
+        raise e
 
 def send_slack_notification(url, task_id, title, message):
-    payload = {
-        "text": f"⚠️ *[ALERTA DE GOVERNANÇA] GovernAI*\n*Tarefa:* {task_id} - {title}\n*Alerta:* {message}"
-    }
+    payload = build_notification_payload("slack", task_id, title, message)
     return send_http_post(url, payload)
 
 def send_discord_notification(url, task_id, title, message):
-    payload = {
-        "content": f"⚠️ **[ALERTA DE GOVERNANÇA] GovernAI**\n**Tarefa:** {task_id} - {title}\n**Alerta:** {message}"
-    }
+    payload = build_notification_payload("discord", task_id, title, message)
     return send_http_post(url, payload)
 
 def send_email_notification(smtp_config, task_id, title, message):
-    try:
-        host = smtp_config.get("host")
-        port = int(smtp_config.get("port", 587))
-        user = smtp_config.get("user")
-        password = smtp_config.get("password")
-        to_email = smtp_config.get("to")
-        
-        msg = MIMEText(f"Alerta de Governança no GovernAI\n\nTarefa: {task_id} - {title}\nAlerta: {message}")
-        msg["Subject"] = f"⚠️ [ALERTA] GovernAI - {task_id}"
-        msg["From"] = user
-        msg["To"] = to_email
-        
-        with smtplib.SMTP(host, port) as server:
-            if port == 587:
-                server.starttls()
-            if user and password:
-                server.login(user, password)
-            server.send_message(msg)
-        return True
-    except Exception as e:
-        print(f"[NOTIFIER] [ERRO] Falha ao enviar e-mail: {e}")
-        return False
+    host = smtp_config.get("host")
+    port = int(smtp_config.get("port", 587))
+    user = smtp_config.get("user")
+    password = smtp_config.get("password")
+    to_email = smtp_config.get("to")
+    
+    msg = MIMEText(f"Alerta de Governança no GovernAI\n\nTarefa: {task_id} - {title}\nAlerta: {message}")
+    msg["Subject"] = f"⚠️ [ALERTA] GovernAI - {task_id}"
+    msg["From"] = user
+    msg["To"] = to_email
+    
+    with smtplib.SMTP(host, port, timeout=5) as server:
+        if port == 587:
+            server.starttls()
+        if user and password:
+            server.login(user, password)
+        server.send_message(msg)
+    return True
 
 def send_notifications(task_id, message):
     env = load_env()
@@ -98,14 +111,22 @@ def send_notifications(task_id, message):
     sent = False
     
     if slack_url:
-        if send_slack_notification(slack_url, task_id, title, message):
-            print(f"[NOTIFIER] Alerta enviado para o Slack para a tarefa {task_id}.")
-            sent = True
+        try:
+            if send_slack_notification(slack_url, task_id, title, message):
+                print(f"[NOTIFIER] Alerta enviado para o Slack para a tarefa {task_id}.")
+                log_notification("slack", "SUCCESS", f"Enviado para tarefa {task_id}")
+                sent = True
+        except Exception as e:
+            log_notification("slack", "ERROR", f"Falha ao enviar: {e}")
             
     if discord_url:
-        if send_discord_notification(discord_url, task_id, title, message):
-            print(f"[NOTIFIER] Alerta enviado para o Discord para a tarefa {task_id}.")
-            sent = True
+        try:
+            if send_discord_notification(discord_url, task_id, title, message):
+                print(f"[NOTIFIER] Alerta enviado para o Discord para a tarefa {task_id}.")
+                log_notification("discord", "SUCCESS", f"Enviado para tarefa {task_id}")
+                sent = True
+        except Exception as e:
+            log_notification("discord", "ERROR", f"Falha ao enviar: {e}")
             
     if smtp_host:
         smtp_config = {
@@ -115,9 +136,14 @@ def send_notifications(task_id, message):
             "password": env.get("GOVERNAI_SMTP_PASSWORD"),
             "to": env.get("GOVERNAI_SMTP_TO")
         }
-        if send_email_notification(smtp_config, task_id, title, message):
-            print(f"[NOTIFIER] Alerta enviado por e-mail para a tarefa {task_id}.")
-            sent = True
+        try:
+            if send_email_notification(smtp_config, task_id, title, message):
+                print(f"[NOTIFIER] Alerta enviado por e-mail para a tarefa {task_id}.")
+                log_notification("email", "SUCCESS", f"Enviado para tarefa {task_id}")
+                sent = True
+        except Exception as e:
+            log_notification("email", "ERROR", f"Falha ao enviar: {e}")
+            print(f"[NOTIFIER] [ERRO] Falha ao enviar e-mail: {e}")
             
     if not sent:
-        print(f"[NOTIFIER] [AVISO] Alerta gerado para {task_id}, mas nenhum adaptador de notificacao configurado no .env.")
+        print(f"[NOTIFIER] [AVISO] Alerta gerado para {task_id}, mas nenhum adaptador de notificacao processou com sucesso.")

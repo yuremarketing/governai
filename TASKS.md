@@ -278,7 +278,7 @@ Implementar um mecanismo de envio ativo e automatizado de notificações/alertas
 
 ### TASK-019 — Aplicar hardening no sistema de notificações
 
-**Status:** [ ]
+**Status:** [x]
 **Descrição:**
 Aplicar hardening e aumentar a robustez do sistema de notificações ativas (notifier), incluindo a configuração explícita de timeout HTTP, tratamento estruturado de exceções em todas as chamadas de rede, padronização estruturada de payloads e logging detalhado de envio de alertas.
 
