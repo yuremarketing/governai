@@ -157,9 +157,21 @@ def parse_tasks():
     tasks = []
     
     header_re = re.compile(r"###\s+(TASK-[A-Z0-9_-]+)\s*[-—]\s*(.+)")
+    category_re = re.compile(r"##\s+([^\n]+)")
+    
+    current_category = "Sem Categoria"
     
     for section in sections:
         section = section.strip()
+        
+        # Verifica se esta seção define uma nova categoria
+        category_match = category_re.search(section)
+        if category_match:
+            cat_candidate = category_match.group(1).strip()
+            # Ignora cabeçalhos que não sejam categorias reais
+            if not cat_candidate.startswith("###") and not cat_candidate.startswith("📋") and not cat_candidate.startswith("✅"):
+                current_category = cat_candidate
+        
         header_match = header_re.search(section)
         if not header_match:
             continue
@@ -174,7 +186,10 @@ def parse_tasks():
         is_done = False
         is_in_progress = False
         
-        if status_val.lower() == 'x':
+        # Tarefas canceladas ou superadas devem ir diretamente para 'done'
+        is_canceled = "CANCELADA" in section or "CANCELADA" in status_val or "SUPERADA" in status_val
+        
+        if status_val.lower() == 'x' or is_canceled:
             is_done = True
         elif status_val == '/':
             is_in_progress = True
@@ -193,7 +208,8 @@ def parse_tasks():
             "title": full_title,
             "body": body,
             "is_done": is_done,
-            "is_in_progress": is_in_progress
+            "is_in_progress": is_in_progress,
+            "category": current_category
         })
         
     return tasks
@@ -208,6 +224,49 @@ def query_github(query, variables=None):
     if "errors" in res:
         raise Exception(f"GraphQL returned errors: {res['errors']}")
     return res["data"]
+
+def create_category_field(project_id):
+    query = """
+    mutation($projectId: ID!, $name: String!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
+      createProjectV2Field(input: {
+        projectId: $projectId,
+        name: $name,
+        dataType: SINGLE_SELECT,
+        singleSelectOptions: $options
+      }) {
+        projectV2Field {
+          ... on ProjectV2SingleSelectField {
+            id
+            options {
+              id
+              name
+            }
+          }
+        }
+      }
+    }
+    """
+    options_input = [
+        {"name": "🛡️ Segurança & Privacidade", "color": "RED", "description": ""},
+        {"name": "🤖 Governança & CLI Core", "color": "BLUE", "description": ""},
+        {"name": "📊 Métricas, Monitoramento & Alertas", "color": "ORANGE", "description": ""},
+        {"name": "🔄 Integração com Board", "color": "GREEN", "description": ""},
+        {"name": "🎨 Experiência do Usuário (UX) & Documentação", "color": "PINK", "description": ""}
+    ]
+    
+    res = query_github(query, {
+        "projectId": project_id,
+        "name": "Categoria",
+        "options": options_input
+    })
+    
+    field = res["createProjectV2Field"]["projectV2Field"]
+    field_id = field["id"]
+    options = {}
+    for opt in field["options"]:
+        options[opt["name"]] = opt["id"]
+        
+    return field_id, options
 
 def get_project_metadata():
     query = """
@@ -241,17 +300,39 @@ def get_project_metadata():
     status_field_id = None
     status_options = {}
     
+    category_field_id = None
+    category_options = {}
+    
     for field in project["fields"]["nodes"]:
-        if field.get("name") == "Status":
+        name = field.get("name")
+        if name == "Status":
             status_field_id = field["id"]
             for option in field["options"]:
                 status_options[option["name"].lower()] = option["id"]
-            break
-            
+        elif name == "Categoria":
+            category_field_id = field["id"]
+            for option in field["options"]:
+                category_options[option["name"]] = option["id"]
+                
     if not status_field_id:
         raise Exception("Campo 'Status' não encontrado no projeto.")
         
-    return project_id, status_field_id, status_options
+    # Se o campo Categoria não existe, tenta criá-lo automaticamente
+    if not category_field_id:
+        print(cli_colors.blue("Campo 'Categoria' não encontrado no projeto. Tentando criar automaticamente..."))
+        try:
+            category_field_id, category_options = create_category_field(project_id)
+            print(cli_colors.green("Campo 'Categoria' criado com sucesso no GitHub Projects!"))
+        except Exception as e:
+            print(cli_colors.yellow(f"\n⚠️  Aviso: Não foi possível criar o campo 'Categoria' automaticamente: {e}"))
+            print(cli_colors.yellow("Para ver as tarefas agrupadas por categoria no GitHub, crie um campo 'Single Select' chamado 'Categoria' manualmente no seu Projects com as opções:"))
+            print(cli_colors.yellow(" - 🛡️ Segurança & Privacidade"))
+            print(cli_colors.yellow(" - 🤖 Governança & CLI Core"))
+            print(cli_colors.yellow(" - 📊 Métricas, Monitoramento & Alertas"))
+            print(cli_colors.yellow(" - 🔄 Integração com Board"))
+            print(cli_colors.yellow(" - 🎨 Experiência do Usuário (UX) & Documentação\n"))
+            
+    return project_id, status_field_id, status_options, category_field_id, category_options
 
 def get_current_items(project_id):
     query = """
@@ -268,7 +349,9 @@ def get_current_items(project_id):
                   body
                 }
                 ... on Issue {
+                  id
                   title
+                  body
                 }
               }
               fieldValues(first: 20) {
@@ -292,6 +375,9 @@ def get_current_items(project_id):
     data = query_github(query, {"projectId": project_id})
     items = data["node"]["items"]["nodes"]
     existing = {}
+    
+    task_id_re = re.compile(r"^(TASK-[A-Z0-9_-]+)")
+    
     for item in items:
         title = ""
         draft_issue_id = None
@@ -304,16 +390,25 @@ def get_current_items(project_id):
             body_content = content.get("body", "")
         
         status_name = ""
+        category_name = ""
         for val in item.get("fieldValues", {}).get("nodes", []):
-            if val.get("field", {}).get("name") == "Status":
+            field_name = val.get("field", {}).get("name")
+            if field_name == "Status":
                 status_name = val.get("name", "")
-                break
+            elif field_name == "Categoria":
+                category_name = val.get("name", "")
                 
         if title:
-            existing[title] = {
+            # Tenta extrair o Task ID
+            id_match = task_id_re.match(title)
+            key = id_match.group(1) if id_match else title
+            
+            existing[key] = {
                 "id": item["id"],
                 "draft_issue_id": draft_issue_id,
+                "title": title,
                 "status": status_name.lower(),
+                "category": category_name,
                 "body": body_content
             }
     return existing
@@ -390,7 +485,7 @@ def main():
     print(cli_colors.blue(f"Lidas {len(tasks)} tarefas de TASKS.md."))
     
     print(cli_colors.blue("Buscando metadados do projeto..."))
-    project_id, status_field_id, status_options = get_project_metadata()
+    project_id, status_field_id, status_options, category_field_id, category_options = get_project_metadata()
     print(cli_colors.blue(f"Opções de Status detectadas: {list(status_options.keys())}"))
     
     print(cli_colors.blue("Buscando itens atuais do board..."))
@@ -401,9 +496,8 @@ def main():
         body = t["body"]
         is_done = t["is_done"]
         is_in_progress = t["is_in_progress"]
-        
-        # Sincronização e consistência atômica com o metrics.json
         task_id = t["id"]
+        task_category = t.get("category", "Sem Categoria")
         
         try:
             m_data = load_metrics()
@@ -486,25 +580,41 @@ def main():
             continue
         body = safe_body
             
-        if title in existing_items:
-            item_info = existing_items[title]
+        # Busca no board baseada no task_id para evitar duplicação por mudança de título
+        if task_id in existing_items:
+            item_info = existing_items[task_id]
             item_id = item_info["id"]
             draft_issue_id = item_info["draft_issue_id"]
             current_status = item_info["status"]
             current_body = item_info["body"]
+            current_title = item_info.get("title", "")
+            current_category_val = item_info.get("category", "")
             
-            # Check if the body needs update
-            if draft_issue_id and normalize_text(current_body) != normalize_text(body):
-                print(cli_colors.blue(f"Atualizando corpo de '{title}'..."))
+            # Check if the body or title needs update
+            if draft_issue_id and (normalize_text(current_body) != normalize_text(body) or current_title != title):
+                print(cli_colors.blue(f"Atualizando corpo/título de '{title}'..."))
                 update_draft_issue(draft_issue_id, title, body)
             
             if current_status != target_status_name:
                 print(cli_colors.cyan(f"Atualizando status de '{title}': {current_status} -> {target_status_name}"))
                 update_item_status(project_id, item_id, status_field_id, option_id)
+                
+            # Sincroniza o valor da Categoria no item
+            if category_field_id and task_category in category_options:
+                target_cat_option_id = category_options[task_category]
+                if current_category_val != task_category:
+                    print(cli_colors.cyan(f"Atualizando categoria de '{title}': '{current_category_val}' -> '{task_category}'"))
+                    update_item_status(project_id, item_id, category_field_id, target_cat_option_id)
         else:
             print(cli_colors.green(f"Criando nova task '{title}' no status {target_status_name}..."))
             item_id, draft_issue_id = add_draft_issue(project_id, title, body)
             update_item_status(project_id, item_id, status_field_id, option_id)
+            
+            # Sincroniza categoria na criação
+            if category_field_id and task_category in category_options:
+                target_cat_option_id = category_options[task_category]
+                print(cli_colors.cyan(f"Definindo categoria de '{title}' para '{task_category}'"))
+                update_item_status(project_id, item_id, category_field_id, target_cat_option_id)
             
     print(cli_colors.green("Sincronização concluída com sucesso!"))
 
