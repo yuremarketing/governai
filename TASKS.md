@@ -496,7 +496,7 @@ Garantir que o usuário entenda claramente o que está aprovando antes de intera
 
 ### TASK-TEST-UX — Testar fluxo de aprovação com contexto
 
-**Status:** [ ]
+**Status:** [x]
 **Descrição:**
 Validar se o GovernAI exibe corretamente o bloco de aprovação com contexto antes de solicitar Accept/Reject.
 
